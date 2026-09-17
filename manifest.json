@@ -1,0 +1,11 @@
+{
+  "name": "BAAC SMART OUTLET",
+  "short_name": "BAAC POS",
+  "description": "ระบบบริหารร้านฝากขายอัจฉริยะ",
+  "start_url": "./",
+  "scope": "./",
+  "display": "standalone",
+  "background_color": "#F4F8F4",
+  "theme_color": "#007A33",
+  "lang": "th"
+}
