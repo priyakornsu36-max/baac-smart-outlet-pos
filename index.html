@@ -1,0 +1,47 @@
+<!DOCTYPE html>
+<html lang="th">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>BAAC SMART OUTLET - POS Offline</title>
+
+<link rel="manifest" href="manifest.json">
+<meta name="theme-color" content="#007A33">
+
+<script>
+if ('serviceWorker' in navigator) {
+  navigator.serviceWorker.register('sw.js');
+}
+</script>
+
+<style>
+body{
+  margin:0;
+  font-family:sans-serif;
+  background:#F4F8F4;
+}
+.loading{
+  display:flex;
+  align-items:center;
+  justify-content:center;
+  height:100vh;
+  color:#007A33;
+  font-size:24px;
+  font-weight:bold;
+}
+</style>
+</head>
+
+<body>
+
+<div class="loading">
+กำลังโหลด BAAC SMART OUTLET...
+</div>
+
+<script>
+window.location.href =
+"https://script.google.com/macros/s/AKfycbxxxxxxxxxxxxxxxxxxxxxxxxxxxxx/exec?page=pos";
+</script>
+
+</body>
+</html>
