@@ -977,12 +977,75 @@ function baacJsonp(api, params) {
 }
 
 function baacPost(payload) {
-  return fetch(BAAC_API_URL, {
-    method:'POST',
-    mode:'no-cors',
-    headers:{'Content-Type':'text/plain;charset=UTF-8'},
-    body:JSON.stringify(payload)
+  /* ส่งข้ามโดเมนด้วย form + hidden iframe แทน fetch/no-cors
+     Apps Script รับ e.parameter.payload แล้วค่อยยืนยันผลด้วย JSONP */
+  return new Promise((resolve, reject) => {
+    const frameName = '__baac_post_' + Date.now() + '_' + Math.random().toString(36).slice(2);
+    const iframe = document.createElement('iframe');
+    iframe.name = frameName;
+    iframe.style.display = 'none';
+
+    const form = document.createElement('form');
+    form.method = 'POST';
+    form.action = BAAC_API_URL;
+    form.target = frameName;
+    form.style.display = 'none';
+
+    const input = document.createElement('input');
+    input.type = 'hidden';
+    input.name = 'payload';
+    input.value = JSON.stringify(payload || {});
+    form.appendChild(input);
+
+    let done = false;
+    const cleanup = () => {
+      setTimeout(() => {
+        try { form.remove(); } catch(e) {}
+        try { iframe.remove(); } catch(e) {}
+      }, 500);
+    };
+
+    const timer = setTimeout(() => {
+      if(done) return;
+      done = true;
+      cleanup();
+      reject(new Error('ส่งข้อมูลไปเซิร์ฟเวอร์ไม่สำเร็จ'));
+    }, 12000);
+
+    iframe.addEventListener('load', () => {
+      if(done) return;
+      done = true;
+      clearTimeout(timer);
+      cleanup();
+      resolve(true);
+    });
+
+    document.body.appendChild(iframe);
+    document.body.appendChild(form);
+    form.submit();
   });
+}
+
+function normalizePhoneClient(v){
+  let s = String(v || '').replace(/\D/g,'');
+  if(s.length === 9) s = '0' + s;
+  return s;
+}
+
+function getMemberCache(){
+  try { return JSON.parse(localStorage.getItem('baacMemberCache') || '{}') || {}; }
+  catch(e){ return {}; }
+}
+
+function cacheMember(member){
+  if(!member || !member.found || !member.phone) return;
+  const cache = getMemberCache();
+  cache[normalizePhoneClient(member.phone)] = member;
+  localStorage.setItem('baacMemberCache', JSON.stringify(cache));
+}
+
+function getCachedMember(phone){
+  return getMemberCache()[normalizePhoneClient(phone)] || null;
 }
 
 async function baacWaitTx(id) {
@@ -1538,18 +1601,41 @@ Object.defineProperty(window.google.script, 'run', { get: makeGasRunner });
   }
 
   function checkMember(){
-    const phone = document.getElementById('phone').value.trim();
+    const phoneInput = document.getElementById('phone');
+    const phone = normalizePhoneClient(phoneInput.value.trim());
+    phoneInput.value = phone;
     if(!phone) return resetMember();
+
+    const box = document.getElementById('memberbox');
+    const add = document.getElementById('addMemberBtn');
+
+    /* ออฟไลน์: ใช้สมาชิกที่เคยตรวจพบจาก cache ได้
+       ถ้ายังไม่เคยพบ ก็ยังขายได้และเก็บเบอร์ไว้ให้ server ตรวจตอน sync */
+    if(!navigator.onLine){
+      const cached = getCachedMember(phone);
+      box.style.display = 'block';
+      if(cached){
+        currentMember = cached;
+        box.className = 'memberbox';
+        box.innerHTML = '<b>พบสมาชิกจากข้อมูลในเครื่อง</b>' +
+          (cached.name ? ' • ' + esc(cached.name) : '') +
+          '<br>เบอร์นี้จะถูกตรวจสอบอีกครั้งเมื่อซิงก์';
+      }else{
+        currentMember = null;
+        box.className = 'memberbox notfound';
+        box.innerHTML = '<b>ออฟไลน์</b> บันทึกเบอร์ ' + esc(phone) + ' ไว้กับบิลแล้ว • ระบบจะตรวจสมาชิกเมื่อออนไลน์';
+      }
+      add.style.display = 'none';
+      return;
+    }
 
     google.script.run
       .withSuccessHandler(function(data){
         currentMember = data && data.found ? data : null;
-        const box = document.getElementById('memberbox');
-        const add = document.getElementById('addMemberBtn');
-
         box.style.display = 'block';
 
         if(currentMember){
+          cacheMember(currentMember);
           box.className = 'memberbox';
           box.innerHTML =
             '<b>พบสมาชิก</b>' +
@@ -1563,7 +1649,20 @@ Object.defineProperty(window.google.script, 'run', { get: makeGasRunner });
           add.style.display = 'inline-block';
         }
       })
-      .withFailureHandler(showError)
+      .withFailureHandler(function(){
+        const cached = getCachedMember(phone);
+        box.style.display = 'block';
+        add.style.display = 'none';
+        if(cached){
+          currentMember = cached;
+          box.className = 'memberbox';
+          box.innerHTML = '<b>ใช้ข้อมูลสมาชิกในเครื่อง</b>' + (cached.name ? ' • ' + esc(cached.name) : '');
+        }else{
+          currentMember = null;
+          box.className = 'memberbox notfound';
+          box.innerHTML = '<b>ยังติดต่อเซิร์ฟเวอร์ไม่ได้</b> เก็บเบอร์นี้ไว้กับบิลและตรวจตอนซิงก์';
+        }
+      })
       .lookupMember(phone);
   }
 
@@ -1594,6 +1693,7 @@ Object.defineProperty(window.google.script, 'run', { get: makeGasRunner });
         document.getElementById('phone').value = member.phone || phone;
         document.getElementById('newMemberName').value = '';
         currentMember = member;
+        cacheMember(member);
         const box = document.getElementById('memberbox');
         box.style.display = 'block';
         box.className = 'memberbox';
