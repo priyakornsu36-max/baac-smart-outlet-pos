@@ -977,8 +977,8 @@ function baacJsonp(api, params) {
 }
 
 function baacPost(payload) {
-  /* ส่งข้ามโดเมนด้วย form + hidden iframe แทน fetch/no-cors
-     Apps Script รับ e.parameter.payload แล้วค่อยยืนยันผลด้วย JSONP */
+  /* ส่งแบบ form ไป Apps Script โดยไม่พึ่ง CORS
+     ผลสำเร็จจริงจะตัดสินจาก api=tx เท่านั้น */
   return new Promise((resolve, reject) => {
     const frameName = '__baac_post_' + Date.now() + '_' + Math.random().toString(36).slice(2);
     const iframe = document.createElement('iframe');
@@ -997,32 +997,21 @@ function baacPost(payload) {
     input.value = JSON.stringify(payload || {});
     form.appendChild(input);
 
-    let done = false;
-    const cleanup = () => {
+    document.body.appendChild(iframe);
+    document.body.appendChild(form);
+
+    try {
+      form.submit();
       setTimeout(() => {
         try { form.remove(); } catch(e) {}
         try { iframe.remove(); } catch(e) {}
-      }, 500);
-    };
-
-    const timer = setTimeout(() => {
-      if(done) return;
-      done = true;
-      cleanup();
-      reject(new Error('ส่งข้อมูลไปเซิร์ฟเวอร์ไม่สำเร็จ'));
-    }, 12000);
-
-    iframe.addEventListener('load', () => {
-      if(done) return;
-      done = true;
-      clearTimeout(timer);
-      cleanup();
+      }, 15000);
       resolve(true);
-    });
-
-    document.body.appendChild(iframe);
-    document.body.appendChild(form);
-    form.submit();
+    } catch (e) {
+      try { form.remove(); } catch(x) {}
+      try { iframe.remove(); } catch(x) {}
+      reject(e);
+    }
   });
 }
 
@@ -1048,15 +1037,35 @@ function getCachedMember(phone){
   return getMemberCache()[normalizePhoneClient(phone)] || null;
 }
 
+function cacheMembers(members){
+  const cache = getMemberCache();
+  (members || []).forEach(member => {
+    if(member && member.found && member.phone){
+      cache[normalizePhoneClient(member.phone)] = member;
+    }
+  });
+  localStorage.setItem('baacMemberCache', JSON.stringify(cache));
+}
+
+function refreshMemberCache(){
+  if(!navigator.onLine) return;
+  baacJsonp('members')
+    .then(x => {
+      if(x && x.success && Array.isArray(x.members)) cacheMembers(x.members);
+    })
+    .catch(() => {});
+}
+
 async function baacWaitTx(id) {
-  for (let i=0;i<8;i++) {
-    await new Promise(r => setTimeout(r, 700));
+  if(!id) throw new Error('ไม่พบรหัสธุรกรรมเครื่อง');
+  for (let i = 0; i < 15; i++) {
     try {
       const x = await baacJsonp('tx', {id:id});
-      if (x && x.found) return true;
+      if (x && x.success && x.found === true && x.confirmed !== false) return x;
     } catch(e) {}
+    await new Promise(r => setTimeout(r, 1000));
   }
-  throw new Error('ส่งบิลแล้ว แต่ยังยืนยันการซิงก์ไม่ได้');
+  throw new Error('เซิร์ฟเวอร์ยังไม่ยืนยันการบันทึกบิล');
 }
 
 function makeGasRunner() {
@@ -1107,6 +1116,7 @@ window.google.script = window.google.script || {};
 Object.defineProperty(window.google.script, 'run', { get: makeGasRunner });
 </script>
 
+<!-- BAAC_PWA_BUILD_20260920_SAFE_SYNC -->
 </head>
 <body>
 
@@ -1297,6 +1307,7 @@ Object.defineProperty(window.google.script, 'run', { get: makeGasRunner });
   document.addEventListener('DOMContentLoaded', function(){
     restoreCachedProducts();
     loadProducts();
+    refreshMemberCache();
     updateHeldCount();
     updateConnectionStatus();
     updatePendingBadge();
@@ -1304,6 +1315,7 @@ Object.defineProperty(window.google.script, 'run', { get: makeGasRunner });
       updateConnectionStatus();
       syncPendingSales();
       loadProducts();
+      refreshMemberCache();
     });
     window.addEventListener('offline', function(){
       updateConnectionStatus();
@@ -1805,7 +1817,17 @@ Object.defineProperty(window.google.script, 'run', { get: makeGasRunner });
       pending.push(payload);
       savePendingSales(pending);
       reserveOfflineStock(payload.items || []);
+      return true;
     }
+    return false;
+  }
+
+  function removePendingSale(clientTransactionId){
+    const latest = getPendingSales().filter(function(x){
+      return x.clientTransactionId !== clientTransactionId;
+    });
+    savePendingSales(latest);
+    return latest;
   }
 
   function showCheckoutResult(result, queued){
@@ -1836,7 +1858,9 @@ Object.defineProperty(window.google.script, 'run', { get: makeGasRunner });
       showAppAlert('จำนวนเงินที่รับน้อยกว่ายอดชำระ','จำนวนเงินไม่ถูกต้อง','error'); return;
     }
 
-    const phone = document.getElementById('phone').value.trim();
+    const phone = normalizePhoneClient(document.getElementById('phone').value.trim());
+    document.getElementById('phone').value = phone;
+
     const payload = {
       clientTransactionId: makeClientTransactionId(),
       items: cart.map(x => ({id:x.id, qty:x.qty})),
@@ -1846,14 +1870,16 @@ Object.defineProperty(window.google.script, 'run', { get: makeGasRunner });
       offlineCreatedAt: new Date().toISOString()
     };
 
+    /* หลักสำคัญ: เก็บบิลไว้ในเครื่องก่อนเสมอ */
+    queueSaleOffline(payload);
+
     if(!navigator.onLine){
-      queueSaleOffline(payload);
       updateConnectionStatus();
       showCheckoutResult({
         total:total,
         paymentMethod:paymentMethod,
         change:paymentMethod === 'เงินสด' ? cashReceived-total : 0,
-        memberFound:false,
+        memberFound:!!currentMember,
         pointsEarned:0
       }, true);
       return;
@@ -1863,22 +1889,27 @@ Object.defineProperty(window.google.script, 'run', { get: makeGasRunner });
 
     google.script.run
       .withSuccessHandler(function(result){
+        /* runner จะ success ได้หลัง api=tx ยืนยันแล้วเท่านั้น */
+        removePendingSale(payload.clientTransactionId);
+        document.getElementById('loading').classList.remove('show');
         showCheckoutResult(result, false);
+        refreshMemberCache();
+        loadProducts();
         syncPendingSales();
       })
       .withFailureHandler(function(err){
         document.getElementById('loading').classList.remove('show');
 
-        /* ถ้าการเชื่อมต่อหาย ให้เก็บบิลไว้ก่อน
-           ฝั่งเซิร์ฟเวอร์ตรวจ clientTransactionId ซ้ำอีกชั้น จึงไม่ลงบิลซ้ำ */
-        if(!navigator.onLine || /network|fetch|connection|internet|offline/i.test(String(err && err.message || err || ''))){
-          queueSaleOffline(payload);
-          updateConnectionStatus(true);
+        /* ห้ามลบบิลออกจากคิวเมื่อยังยืนยันไม่ได้ */
+        updatePendingBadge();
+
+        if(!navigator.onLine || /network|fetch|connection|internet|offline|ยืนยัน/i.test(String(err && err.message || err || ''))){
+          updateConnectionStatus(!navigator.onLine);
           showCheckoutResult({
             total:total,
             paymentMethod:paymentMethod,
             change:paymentMethod === 'เงินสด' ? cashReceived-total : 0,
-            memberFound:false,
+            memberFound:!!currentMember,
             pointsEarned:0
           }, true);
         }else{
@@ -1890,35 +1921,62 @@ Object.defineProperty(window.google.script, 'run', { get: makeGasRunner });
 
   let syncRunning = false;
 
-  function syncPendingSales(){
+  async function syncOnePendingSale(item){
+    if(!item || !item.clientTransactionId) throw new Error('บิลรอซิงก์ไม่มีรหัสธุรกรรม');
+
+    /* 1) เช็กก่อน เผื่อเซิร์ฟเวอร์เคยรับแล้ว */
+    try{
+      const before = await baacJsonp('tx',{id:item.clientTransactionId});
+      if(before && before.success && before.found === true){
+        return before;
+      }
+    }catch(e){}
+
+    /* 2) ถ้ายังไม่มี จึงส่ง */
+    await baacPost(Object.assign({api:'checkout'}, item));
+
+    /* 3) ห้ามถือว่าสำเร็จจนกว่าเซิร์ฟเวอร์ยืนยัน transaction เดิม */
+    return await baacWaitTx(item.clientTransactionId);
+  }
+
+  async function syncPendingSales(){
     if(syncRunning || !navigator.onLine) return;
+
     const pending = getPendingSales();
-    if(!pending.length) return;
+    if(!pending.length){
+      updatePendingBadge();
+      return;
+    }
 
     syncRunning = true;
-    const item = pending[0];
 
-    google.script.run
-      .withSuccessHandler(function(){
-        const latest = getPendingSales().filter(function(x){
-          return x.clientTransactionId !== item.clientTransactionId;
-        });
-        savePendingSales(latest);
-        syncRunning = false;
-        updateConnectionStatus();
-        if(latest.length){
-          syncPendingSales();
-        }else{
-          showToast('ซิงก์รายการขายเรียบร้อยแล้ว');
-          loadProducts();
+    try{
+      for(const item of pending){
+        if(!navigator.onLine) break;
+
+        try{
+          await syncOnePendingSale(item);
+          removePendingSale(item.clientTransactionId);
+        }catch(err){
+          /* เก็บบิลไว้ หยุดรอบนี้ แล้วลองใหม่เมื่อออนไลน์/รอบถัดไป */
+          updatePendingBadge();
+          break;
         }
-      })
-      .withFailureHandler(function(){
-        syncRunning = false;
-        updateConnectionStatus(!navigator.onLine);
-      })
-      .checkoutSale(item);
+      }
+
+      const left = getPendingSales();
+      updateConnectionStatus(!navigator.onLine);
+
+      if(!left.length){
+        showToast('ซิงก์รายการขายเรียบร้อยแล้ว');
+        refreshMemberCache();
+        loadProducts();
+      }
+    }finally{
+      syncRunning = false;
+    }
   }
+
 
   function newSale(){
     cart = [];
