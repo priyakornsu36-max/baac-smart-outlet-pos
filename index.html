@@ -1854,27 +1854,69 @@ Object.defineProperty(window.google.script, 'run', { get: makeGasRunner });
     return latest;
   }
 
+  function getThaiSpeechVoice(){
+    const voices = window.speechSynthesis.getVoices() || [];
+    return voices.find(v => /^th(?:-|_)/i.test(v.lang || '')) ||
+           voices.find(v => /thai|ภาษาไทย/i.test((v.name || '') + ' ' + (v.voiceURI || ''))) ||
+           null;
+  }
+
+  function speakThaiText(text, thaiVoice, onEnd){
+    const utterance = new SpeechSynthesisUtterance(text);
+    utterance.lang = 'th-TH';
+    utterance.voice = thaiVoice;
+    utterance.rate = 0.75;
+    utterance.pitch = 1;
+    utterance.volume = 1;
+    utterance.onend = () => {
+      if(typeof onEnd === 'function') setTimeout(onEnd, 350);
+    };
+    utterance.onerror = () => {};
+    window.speechSynthesis.speak(utterance);
+  }
+
   function speakCheckoutResult(result){
     if(!('speechSynthesis' in window) || !result) return;
 
+    const synth = window.speechSynthesis;
     const change = Number(result.change || 0);
-    const message = result.paymentMethod === 'เงินสด' && change > 0
-      ? 'เงินทอน ' + money(change) + ' บาท ขอบคุณที่ใช้บริการค่ะ'
-      : 'ขอบคุณที่ใช้บริการค่ะ';
+    let attempts = 0;
 
-    try{
-      window.speechSynthesis.cancel();
-      const utterance = new SpeechSynthesisUtterance(message);
-      utterance.lang = 'th-TH';
-      utterance.rate = 0.95;
-      utterance.pitch = 1;
+    const speakWhenThaiVoiceReady = () => {
+      const thaiVoice = getThaiSpeechVoice();
 
-      const voices = window.speechSynthesis.getVoices();
-      const thaiVoice = voices.find(v => /^th(-|_)/i.test(v.lang || ''));
-      if(thaiVoice) utterance.voice = thaiVoice;
+      if(!thaiVoice){
+        attempts += 1;
+        if(attempts < 12){
+          setTimeout(speakWhenThaiVoiceReady, 250);
+        }
+        return; // ไม่มีเสียงไทยจริง ๆ จะไม่ใช้เสียงอังกฤษแทน
+      }
 
-      window.speechSynthesis.speak(utterance);
-    }catch(e){}
+      synth.cancel();
+
+      if(result.paymentMethod === 'เงินสด' && change > 0){
+        speakThaiText(
+          'เงินทอน ' + money(change) + ' บาท',
+          thaiVoice,
+          () => speakThaiText('ขอบคุณที่ใช้บริการค่ะ', thaiVoice)
+        );
+      }else{
+        speakThaiText('ขอบคุณที่ใช้บริการค่ะ', thaiVoice);
+      }
+    };
+
+    // Chrome/Edge บางเครื่องโหลดรายชื่อเสียงช้ากว่าหน้าเว็บ
+    if(synth.getVoices().length){
+      speakWhenThaiVoiceReady();
+    }else{
+      const handleVoicesChanged = () => {
+        synth.removeEventListener('voiceschanged', handleVoicesChanged);
+        speakWhenThaiVoiceReady();
+      };
+      synth.addEventListener('voiceschanged', handleVoicesChanged);
+      setTimeout(speakWhenThaiVoiceReady, 500);
+    }
   }
 
   function showCheckoutResult(result, queued){
