@@ -1,4 +1,4 @@
-const CACHE_NAME = 'baac-pos-v5';
+const CACHE_NAME = 'baac-pos-v6';
 
 const APP_FILES = [
   './',
@@ -32,8 +32,8 @@ self.addEventListener('activate', event => {
 self.addEventListener('fetch', event => {
   if (event.request.method !== 'GET') return;
 
-  // หน้า POS โหลดเวอร์ชันล่าสุดจากอินเทอร์เน็ตก่อน
-  // หาก Offline จึงใช้เวอร์ชันที่เก็บไว้ใน Cache
+  // หน้า POS ใช้เวอร์ชันล่าสุดจากอินเทอร์เน็ตก่อน
+  // หาก Offline จึงย้อนกลับไปใช้ Cache
   if (event.request.mode === 'navigate') {
     event.respondWith(
       fetch(event.request)
