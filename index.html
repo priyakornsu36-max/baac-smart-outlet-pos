@@ -7,6 +7,7 @@
   <title>BAAC SMART OUTLET - ขายสินค้า</title>
   <link rel="manifest" href="manifest.json">
   <meta name="theme-color" content="#007A33">
+  <meta name="baac-build" content="2026-09-21-fast-gold-v6">
   <style>
 
     /* ===== FC SUBJECT ROUNDED — same as customer/consignor pages ===== */
@@ -1015,7 +1016,7 @@
 const BAAC_API_URL = 'https://script.google.com/macros/s/AKfycbwCS4XlPPlEaZEasQqxCbXFkkom83QF9r86pehdXfq0C2M-bLqNgE5APMBAHOhKTgFmUQ/exec';
 
 if ('serviceWorker' in navigator) {
-  window.addEventListener('load', () => navigator.serviceWorker.register('./sw.js?v=5', { updateViaCache: 'none' }).catch(() => {}));
+  window.addEventListener('load', () => navigator.serviceWorker.register('./sw.js?v=6', { updateViaCache: 'none' }).catch(() => {}));
 }
 
 function baacJsonp(api, params) {
