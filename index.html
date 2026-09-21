@@ -1903,19 +1903,69 @@ Object.defineProperty(window.google.script, 'run', { get: makeGasRunner });
     return p;
   }
 
-  function playBaacVoiceSequence(keys){
-    let i = 0;
-    const next = () => {
-      if(i >= keys.length) return;
-      const src = BAAC_VOICE[keys[i++]];
-      if(!src){ next(); return; }
-      const audio = new Audio(src);
-      audio.preload = 'auto';
-      audio.onended = () => setTimeout(next, 110);
-      audio.onerror = next;
-      audio.play().catch(() => {});
-    };
-    next();
+  let baacAudioContext = null;
+  const baacAudioBufferCache = new Map();
+
+  function unlockBaacAudio(){
+    try{
+      const AudioCtx = window.AudioContext || window.webkitAudioContext;
+      if(!AudioCtx) return false;
+      if(!baacAudioContext) baacAudioContext = new AudioCtx();
+      if(baacAudioContext.state === 'suspended') baacAudioContext.resume().catch(() => {});
+
+      // เล่น buffer เงียบสั้น ๆ ในจังหวะที่ผู้ใช้กดปุ่มชำระเงินโดยตรง
+      // เพื่อปลดล็อกเสียงของเบราว์เซอร์ก่อนรอผลจากเซิร์ฟเวอร์
+      const silent = baacAudioContext.createBuffer(1, 1, 22050);
+      const source = baacAudioContext.createBufferSource();
+      source.buffer = silent;
+      source.connect(baacAudioContext.destination);
+      source.start(0);
+      return true;
+    }catch(e){
+      return false;
+    }
+  }
+
+  async function getBaacVoiceBuffer(key){
+    if(baacAudioBufferCache.has(key)) return baacAudioBufferCache.get(key);
+    const src = BAAC_VOICE[key];
+    if(!src || !baacAudioContext) return null;
+    try{
+      const response = await fetch(src);
+      const bytes = await response.arrayBuffer();
+      const buffer = await baacAudioContext.decodeAudioData(bytes.slice(0));
+      baacAudioBufferCache.set(key, buffer);
+      return buffer;
+    }catch(e){
+      return null;
+    }
+  }
+
+  async function playBaacVoiceSequence(keys){
+    if(!keys || !keys.length) return;
+    if(!baacAudioContext) unlockBaacAudio();
+    if(!baacAudioContext) return;
+
+    try{
+      if(baacAudioContext.state === 'suspended') await baacAudioContext.resume();
+
+      // โหลด/ถอดรหัสเสียงก่อน แล้วค่อยเล่นเรียงกัน ลดอาการคำขาดหรือเงียบ
+      const buffers = [];
+      for(const key of keys){
+        const buffer = await getBaacVoiceBuffer(key);
+        if(buffer) buffers.push(buffer);
+      }
+      if(!buffers.length) return;
+
+      let when = baacAudioContext.currentTime + 0.05;
+      for(const buffer of buffers){
+        const source = baacAudioContext.createBufferSource();
+        source.buffer = buffer;
+        source.connect(baacAudioContext.destination);
+        source.start(when);
+        when += buffer.duration + 0.11;
+      }
+    }catch(e){}
   }
 
   function speakCheckoutResult(result){
@@ -1961,6 +2011,9 @@ Object.defineProperty(window.google.script, 'run', { get: makeGasRunner });
     if(paymentMethod === 'เงินสด' && cashReceived < total){
       showAppAlert('จำนวนเงินที่รับน้อยกว่ายอดชำระ','จำนวนเงินไม่ถูกต้อง','error'); return;
     }
+
+    // ต้องปลดล็อกเสียงตรงนี้ ขณะที่ยังอยู่ใน event จากการกด “ชำระเงิน”
+    unlockBaacAudio();
 
     const phone = normalizePhoneClient(document.getElementById('phone').value.trim());
     document.getElementById('phone').value = phone;
