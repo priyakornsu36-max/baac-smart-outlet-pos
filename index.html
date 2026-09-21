@@ -129,7 +129,7 @@
     }
     .paybtn.active{border-color:#08783f;background:#dff2e5;color:#08783f}
     .cashbox{display:none;margin-top:10px}
-    .change{margin-top:7px;font-size:19px;font-weight:700}
+    .change{margin-top:7px;font-size:28px;font-weight:700}
     .checkout{
       width:100%;margin-top:17px;border:0;border-radius:20px;padding:14px;
       background:#08783f;color:#fff;font-size:24px;font-weight:700;cursor:pointer;
@@ -155,6 +155,7 @@
     .success .big{font-size:56px}
     .success h2{font-size:30px;margin:4px 0}
     .success p{font-size:20px;margin:7px 0}
+    #successChange{font-size:42px;font-weight:800;line-height:1.2;margin:14px 0;color:#08783f}
     .loading{
       display:none;position:fixed;inset:0;z-index:80;background:rgba(255,255,255,.65);
       align-items:center;justify-content:center;font-size:25px;font-weight:700;color:#08783f
@@ -896,7 +897,7 @@
   .paymethods{gap:6px !important;}
   .paybtn{padding:8px !important;font-size:17px !important;border-radius:13px !important;}
   .cashbox{margin-top:5px !important;}
-  .change{margin-top:4px !important;font-size:16px !important;}
+  .change{margin-top:4px !important;font-size:24px !important;font-weight:800 !important;}
 
   .banknotes,.banknote-grid{
     gap:4px !important;
@@ -977,7 +978,7 @@
 const BAAC_API_URL = 'https://script.google.com/macros/s/AKfycbwCS4XlPPlEaZEasQqxCbXFkkom83QF9r86pehdXfq0C2M-bLqNgE5APMBAHOhKTgFmUQ/exec';
 
 if ('serviceWorker' in navigator) {
-  window.addEventListener('load', () => navigator.serviceWorker.register('./sw.js?v=5', { updateViaCache: 'none' }).catch(() => {}));
+  window.addEventListener('load', () => navigator.serviceWorker.register('./sw.js?v=6', { updateViaCache: 'none' }).catch(() => {}));
 }
 
 function baacJsonp(api, params) {
@@ -2011,7 +2012,56 @@ Object.defineProperty(window.google.script, 'run', { get: makeGasRunner });
     speakCheckoutResult(result);
   }
 
-  function checkout(){
+  function showMemberCheckoutReminder(){
+    return new Promise(function(resolve){
+      const overlay = document.getElementById('appDialogOverlay');
+      const icon = document.getElementById('appDialogIcon');
+      const titleEl = document.getElementById('appDialogTitle');
+      const msgEl = document.getElementById('appDialogMessage');
+      const input = document.getElementById('appDialogInput');
+      const cancelBtn = document.getElementById('appDialogCancel');
+      const okBtn = document.getElementById('appDialogOk');
+
+      icon.textContent = '!';
+      icon.style.background = '#fff0db';
+      icon.style.color = '#b36c00';
+      titleEl.textContent = 'ยังไม่ได้ใส่เบอร์โทรสมาชิก';
+      msgEl.textContent = 'ต้องการใส่เบอร์สมาชิกก่อนชำระเงินหรือไม่?';
+      input.style.display = 'none';
+
+      cancelBtn.style.display = 'block';
+      cancelBtn.textContent = 'ใส่เบอร์สมาชิก';
+      okBtn.className = 'app-dialog-ok';
+      okBtn.textContent = 'ชำระเงินต่อ';
+
+      const cleanup = function(){
+        overlay.classList.remove('show');
+        cancelBtn.onclick = null;
+        okBtn.onclick = null;
+      };
+
+      cancelBtn.onclick = function(){
+        cleanup();
+        const phoneInput = document.getElementById('phone');
+        if(phoneInput){
+          phoneInput.scrollIntoView({behavior:'smooth', block:'center'});
+          setTimeout(function(){ phoneInput.focus(); }, 120);
+        }
+        resolve(false);
+      };
+
+      okBtn.onclick = function(){
+        /* ปลดล็อกเสียงจากการกดปุ่มโดยตรง เพื่อคงเสียง AI หลังชำระเงิน */
+        unlockBaacAudio();
+        cleanup();
+        resolve(true);
+      };
+
+      overlay.classList.add('show');
+    });
+  }
+
+  async function checkout(){
     if(!cart.length){ showAppAlert('กรุณาเลือกสินค้า','ยังไม่มีสินค้าในบิล','error'); return; }
     if(!paymentMethod){ showAppAlert('กรุณาเลือก เงินสด หรือ พร้อมเพย์','วิธีชำระเงิน','error'); return; }
 
@@ -2022,11 +2072,18 @@ Object.defineProperty(window.google.script, 'run', { get: makeGasRunner });
       showAppAlert('จำนวนเงินที่รับน้อยกว่ายอดชำระ','จำนวนเงินไม่ถูกต้อง','error'); return;
     }
 
-    // ต้องปลดล็อกเสียงตรงนี้ ขณะที่ยังอยู่ใน event จากการกด “ชำระเงิน”
-    unlockBaacAudio();
-
-    const phone = normalizePhoneClient(document.getElementById('phone').value.trim());
+    let phone = normalizePhoneClient(document.getElementById('phone').value.trim());
     document.getElementById('phone').value = phone;
+
+    /* เตือนเฉพาะกรณียังไม่ได้ใส่เบอร์สมาชิก */
+    if(!phone){
+      const continueWithoutMember = await showMemberCheckoutReminder();
+      if(!continueWithoutMember) return;
+    }
+
+    // ต้องปลดล็อกเสียงขณะที่ยังอยู่ใน event จากการกด “ชำระเงิน”
+    // กรณีไม่มีสมาชิก จะปลดล็อกซ้ำจากปุ่ม “ชำระเงินต่อ” ใน Popup ด้วย
+    unlockBaacAudio();
 
     const payload = {
       clientTransactionId: makeClientTransactionId(),
