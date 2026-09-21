@@ -979,15 +979,33 @@
   padding:10px 12px !important;
 }
 #successChange{
-  font-size:48px !important;
+  margin:12px 0 !important;
   line-height:1.08 !important;
+}
+#successChange .change-label{
+  display:block;
+  font-size:30px !important;
   font-weight:700 !important;
   color:#08783f !important;
-  margin:12px 0 !important;
+  margin-bottom:4px;
+}
+#successChange .change-amount{
+  display:block;
+  font-size:52px !important;
+  font-weight:800 !important;
+  color:#C58A00 !important;
+}
+#successChange .promptpay-success{
+  display:block;
+  font-size:34px !important;
+  font-weight:700 !important;
+  color:#08783f !important;
 }
 @media (min-width:700px) and (max-width:1366px){
   #change.change{font-size:28px !important;}
-  #successChange{font-size:46px !important;}
+  #successChange .change-label{font-size:28px !important;}
+  #successChange .change-amount{font-size:50px !important;}
+  #successChange .promptpay-success{font-size:32px !important;}
 }
 
 </style>
@@ -2018,13 +2036,17 @@ Object.defineProperty(window.google.script, 'run', { get: makeGasRunner });
     document.getElementById('successTotal').textContent =
       'ยอดชำระ ' + money(result.total) + ' บาท';
 
-    document.getElementById('successChange').textContent =
-      result.paymentMethod === 'เงินสด'
-        ? 'เงินทอน ' + money(result.change) + ' บาท'
-        : 'ชำระด้วยพร้อมเพย์';
+    const successChangeEl = document.getElementById('successChange');
+    if(result.paymentMethod === 'เงินสด'){
+      successChangeEl.innerHTML =
+        '<span class="change-label">เงินทอน</span>' +
+        '<span class="change-amount">' + money(result.change) + ' บาท</span>';
+    }else{
+      successChangeEl.innerHTML = '<span class="promptpay-success">ชำระด้วยพร้อมเพย์</span>';
+    }
 
     document.getElementById('successPoints').textContent = queued
-      ? 'บันทึกไว้ในเครื่อง • รอซิงก์เมื่ออินเทอร์เน็ตกลับมา'
+      ? (navigator.onLine ? 'บันทึกรายการแล้ว • กำลังซิงก์ข้อมูล' : 'บันทึกไว้ในเครื่อง • รอซิงก์เมื่ออินเทอร์เน็ตกลับมา')
       : (result.memberFound ? 'ได้รับ ' + money(result.pointsEarned) + ' คะแนน' : '');
 
     document.getElementById('successModal').classList.add('show');
@@ -2096,7 +2118,6 @@ Object.defineProperty(window.google.script, 'run', { get: makeGasRunner });
       const continueWithoutMember = await showMemberReminder();
       if(!continueWithoutMember) return;
     }else{
-      // มีเบอร์สมาชิกแล้ว ปลดล็อกเสียงจากการกดชำระเงินตามเดิม
       unlockBaacAudio();
     }
 
@@ -2112,53 +2133,24 @@ Object.defineProperty(window.google.script, 'run', { get: makeGasRunner });
       offlineCreatedAt: new Date().toISOString()
     };
 
-    /* หลักสำคัญ: เก็บบิลไว้ในเครื่องก่อนเสมอ */
+    /* FAST CHECKOUT: เก็บบิลในเครื่องก่อน แล้วแสดงผลทันที
+       การส่ง Google Sheets ทำต่อเบื้องหลังผ่านคิวเดิม จึงไม่ต้องรอ Apps Script ยืนยันก่อนเห็นเงินทอน */
     queueSaleOffline(payload);
+    updateConnectionStatus();
 
-    if(!navigator.onLine){
-      updateConnectionStatus();
-      showCheckoutResult({
-        total:total,
-        paymentMethod:paymentMethod,
-        change:paymentMethod === 'เงินสด' ? cashReceived-total : 0,
-        memberFound:!!currentMember,
-        pointsEarned:0
-      }, true);
-      return;
+    showCheckoutResult({
+      total:total,
+      paymentMethod:paymentMethod,
+      change:paymentMethod === 'เงินสด' ? cashReceived-total : 0,
+      memberFound:!!currentMember,
+      pointsEarned:0
+    }, true);
+
+    /* ซิงก์เบื้องหลัง ไม่บล็อกหน้าชำระเงิน
+       syncOnePendingSale() จะเช็ก clientTransactionId ก่อนส่ง ป้องกันบิลซ้ำตาม logic เดิม */
+    if(navigator.onLine){
+      setTimeout(function(){ syncPendingSales(); }, 0);
     }
-
-    document.getElementById('loading').classList.add('show');
-
-    google.script.run
-      .withSuccessHandler(function(result){
-        /* runner จะ success ได้หลัง api=tx ยืนยันแล้วเท่านั้น */
-        removePendingSale(payload.clientTransactionId);
-        document.getElementById('loading').classList.remove('show');
-        showCheckoutResult(result, false);
-        refreshMemberCache();
-        loadProducts();
-        syncPendingSales();
-      })
-      .withFailureHandler(function(err){
-        document.getElementById('loading').classList.remove('show');
-
-        /* ห้ามลบบิลออกจากคิวเมื่อยังยืนยันไม่ได้ */
-        updatePendingBadge();
-
-        if(!navigator.onLine || /network|fetch|connection|internet|offline|ยืนยัน/i.test(String(err && err.message || err || ''))){
-          updateConnectionStatus(!navigator.onLine);
-          showCheckoutResult({
-            total:total,
-            paymentMethod:paymentMethod,
-            change:paymentMethod === 'เงินสด' ? cashReceived-total : 0,
-            memberFound:!!currentMember,
-            pointsEarned:0
-          }, true);
-        }else{
-          showError(err);
-        }
-      })
-      .checkoutSale(payload);
   }
 
   let syncRunning = false;
