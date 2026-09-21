@@ -1903,69 +1903,79 @@ Object.defineProperty(window.google.script, 'run', { get: makeGasRunner });
     return p;
   }
 
-  let baacAudioContext = null;
-  const baacAudioBufferCache = new Map();
+  const baacAudioElements = new Map();
+  let baacAudioUnlocked = false;
+
+  function getBaacAudioElement(key){
+    if(baacAudioElements.has(key)) return baacAudioElements.get(key);
+    const src = BAAC_VOICE[key];
+    if(!src) return null;
+    const audio = new Audio(src);
+    audio.preload = 'auto';
+    baacAudioElements.set(key, audio);
+    return audio;
+  }
 
   function unlockBaacAudio(){
+    // ปลดล็อก HTMLAudio ใน event การกดชำระเงินโดยตรง
+    // ใช้เสียงจริงที่ฝังในหน้าเว็บ ไม่พึ่ง SpeechSynthesis/Web Audio decode
     try{
-      const AudioCtx = window.AudioContext || window.webkitAudioContext;
-      if(!AudioCtx) return false;
-      if(!baacAudioContext) baacAudioContext = new AudioCtx();
-      if(baacAudioContext.state === 'suspended') baacAudioContext.resume().catch(() => {});
-
-      // เล่น buffer เงียบสั้น ๆ ในจังหวะที่ผู้ใช้กดปุ่มชำระเงินโดยตรง
-      // เพื่อปลดล็อกเสียงของเบราว์เซอร์ก่อนรอผลจากเซิร์ฟเวอร์
-      const silent = baacAudioContext.createBuffer(1, 1, 22050);
-      const source = baacAudioContext.createBufferSource();
-      source.buffer = silent;
-      source.connect(baacAudioContext.destination);
-      source.start(0);
+      const audio = getBaacAudioElement('thanks');
+      if(!audio) return false;
+      audio.pause();
+      audio.currentTime = 0;
+      audio.volume = 0.01;
+      const playPromise = audio.play();
+      if(playPromise && typeof playPromise.then === 'function'){
+        playPromise.then(() => {
+          baacAudioUnlocked = true;
+          setTimeout(() => {
+            try{
+              audio.pause();
+              audio.currentTime = 0;
+              audio.volume = 1;
+            }catch(e){}
+          }, 60);
+        }).catch(() => {});
+      }
       return true;
     }catch(e){
       return false;
     }
   }
 
-  async function getBaacVoiceBuffer(key){
-    if(baacAudioBufferCache.has(key)) return baacAudioBufferCache.get(key);
-    const src = BAAC_VOICE[key];
-    if(!src || !baacAudioContext) return null;
-    try{
-      const response = await fetch(src);
-      const bytes = await response.arrayBuffer();
-      const buffer = await baacAudioContext.decodeAudioData(bytes.slice(0));
-      baacAudioBufferCache.set(key, buffer);
-      return buffer;
-    }catch(e){
-      return null;
-    }
+  function playOneBaacVoice(key){
+    return new Promise(resolve => {
+      const src = BAAC_VOICE[key];
+      if(!src){ resolve(); return; }
+      try{
+        // สร้าง element ใหม่ทุกคำ ป้องกัน state ค้างจากการปลดล็อก/การเล่นครั้งก่อน
+        const audio = new Audio(src);
+        audio.preload = 'auto';
+        audio.volume = 1;
+        let done = false;
+        const finish = () => {
+          if(done) return;
+          done = true;
+          audio.onended = null;
+          audio.onerror = null;
+          resolve();
+        };
+        audio.onended = finish;
+        audio.onerror = finish;
+        const p = audio.play();
+        if(p && typeof p.catch === 'function') p.catch(finish);
+        setTimeout(finish, 8000);
+      }catch(e){ resolve(); }
+    });
   }
 
   async function playBaacVoiceSequence(keys){
     if(!keys || !keys.length) return;
-    if(!baacAudioContext) unlockBaacAudio();
-    if(!baacAudioContext) return;
-
-    try{
-      if(baacAudioContext.state === 'suspended') await baacAudioContext.resume();
-
-      // โหลด/ถอดรหัสเสียงก่อน แล้วค่อยเล่นเรียงกัน ลดอาการคำขาดหรือเงียบ
-      const buffers = [];
-      for(const key of keys){
-        const buffer = await getBaacVoiceBuffer(key);
-        if(buffer) buffers.push(buffer);
-      }
-      if(!buffers.length) return;
-
-      let when = baacAudioContext.currentTime + 0.05;
-      for(const buffer of buffers){
-        const source = baacAudioContext.createBufferSource();
-        source.buffer = buffer;
-        source.connect(baacAudioContext.destination);
-        source.start(when);
-        when += buffer.duration + 0.11;
-      }
-    }catch(e){}
+    for(const key of keys){
+      await playOneBaacVoice(key);
+      await new Promise(r => setTimeout(r, 90));
+    }
   }
 
   function speakCheckoutResult(result){
