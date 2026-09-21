@@ -1854,6 +1854,29 @@ Object.defineProperty(window.google.script, 'run', { get: makeGasRunner });
     return latest;
   }
 
+  function speakCheckoutResult(result){
+    if(!('speechSynthesis' in window) || !result) return;
+
+    const change = Number(result.change || 0);
+    const message = result.paymentMethod === 'เงินสด' && change > 0
+      ? 'เงินทอน ' + money(change) + ' บาท ขอบคุณที่ใช้บริการค่ะ'
+      : 'ขอบคุณที่ใช้บริการค่ะ';
+
+    try{
+      window.speechSynthesis.cancel();
+      const utterance = new SpeechSynthesisUtterance(message);
+      utterance.lang = 'th-TH';
+      utterance.rate = 0.95;
+      utterance.pitch = 1;
+
+      const voices = window.speechSynthesis.getVoices();
+      const thaiVoice = voices.find(v => /^th(-|_)/i.test(v.lang || ''));
+      if(thaiVoice) utterance.voice = thaiVoice;
+
+      window.speechSynthesis.speak(utterance);
+    }catch(e){}
+  }
+
   function showCheckoutResult(result, queued){
     document.getElementById('loading').classList.remove('show');
     document.getElementById('successTotal').textContent =
@@ -1869,6 +1892,7 @@ Object.defineProperty(window.google.script, 'run', { get: makeGasRunner });
       : (result.memberFound ? 'ได้รับ ' + money(result.pointsEarned) + ' คะแนน' : '');
 
     document.getElementById('successModal').classList.add('show');
+    speakCheckoutResult(result);
   }
 
   function checkout(){
