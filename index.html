@@ -1108,7 +1108,7 @@ function makeGasRunner() {
         await baacPost(Object.assign({api:'checkout'}, payload));
         await baacWaitTx(payload.clientTransactionId);
         const total=(payload.items||[]).reduce((sum,it)=>{
-          const p=(window.products||[]).find(x=>String(x.id)===String(it.id));
+          const p=(Array.isArray(products)?products:[]).find(x=>String(x.id)===String(it.id));
           return sum + (p ? Number(p.price||0)*Number(it.qty||0) : 0);
         },0);
         let member={found:false};
