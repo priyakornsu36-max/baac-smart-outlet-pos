@@ -1009,77 +1009,6 @@
   #successChange .promptpay-success{font-size:32px !important;}
 }
 
-
-
-/* ===== BAAC SMART OUTLET APP SHELL ===== */
-.app-home-shell,
-.staff-frame-shell{
-  position:fixed;
-  inset:0;
-  z-index:30000;
-  background:linear-gradient(135deg,#f8f5e9,#eef7ed);
-}
-.app-home-shell{display:flex;flex-direction:column;overflow:auto}
-.app-home-topbar{
-  min-height:82px;
-  background:#08783f;
-  color:#fff;
-  display:flex;
-  align-items:center;
-  justify-content:space-between;
-  gap:20px;
-  padding:14px 28px;
-  box-shadow:0 4px 18px rgba(0,0,0,.12)
-}
-.app-home-brand{font-size:30px;font-weight:800;line-height:1.05}
-.app-home-sub{font-size:16px;opacity:.92;margin-top:5px}
-.app-home-status{
-  display:flex;align-items:center;gap:8px;
-  font-size:16px;font-weight:700;
-  background:rgba(255,255,255,.14);
-  border:1px solid rgba(255,255,255,.28);
-  border-radius:999px;padding:8px 13px
-}
-.app-home-status-dot{width:10px;height:10px;border-radius:50%;background:#7ee787;box-shadow:0 0 0 3px rgba(126,231,135,.18)}
-.app-home-status.offline .app-home-status-dot{background:#ffd166;box-shadow:0 0 0 3px rgba(255,209,102,.18)}
-.app-home-main{width:min(980px,calc(100% - 36px));margin:0 auto;padding:54px 0 64px}
-.app-home-title{text-align:center;font-size:36px;font-weight:800;color:#173e31;margin-bottom:8px}
-.app-home-desc{text-align:center;font-size:18px;color:#687b70;margin-bottom:34px}
-.app-home-grid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:22px}
-.app-menu-card{
-  appearance:none;border:1px solid #dbe7df;background:#fff;
-  border-radius:26px;padding:28px;text-align:left;cursor:pointer;
-  box-shadow:0 10px 30px rgba(29,72,51,.08);
-  transition:transform .16s ease,box-shadow .16s ease,border-color .16s ease;
-  min-height:190px;color:#173e31
-}
-.app-menu-card:hover{transform:translateY(-2px);box-shadow:0 14px 34px rgba(29,72,51,.13);border-color:#b9d5c2}
-.app-menu-card:active{transform:translateY(0)}
-.app-menu-icon{width:60px;height:60px;border-radius:18px;display:flex;align-items:center;justify-content:center;font-size:31px;background:#eaf6ee;margin-bottom:18px}
-.app-menu-title{font-size:26px;font-weight:800;margin-bottom:6px}
-.app-menu-note{font-size:17px;color:#708077;line-height:1.5}
-.app-menu-card.stock .app-menu-icon{background:#fff3dc}
-.app-home-foot{text-align:center;margin-top:28px;color:#86948c;font-size:15px}
-.staff-frame-shell{display:none;background:#f5f6f5}
-.staff-frame-shell.show{display:block}
-.staff-frame-shell iframe{width:100%;height:100%;border:0;background:#fff;display:block}
-.staff-loading{
-  position:absolute;inset:0;display:flex;align-items:center;justify-content:center;
-  background:linear-gradient(135deg,#f8f5e9,#eef7ed);z-index:2;
-  color:#173e31;font-size:20px;font-weight:700
-}
-.staff-loading.hide{display:none}
-@media(max-width:700px){
-  .app-home-topbar{padding:12px 18px;min-height:72px}
-  .app-home-brand{font-size:23px}
-  .app-home-sub{font-size:14px}
-  .app-home-main{width:min(94%,620px);padding:34px 0 46px}
-  .app-home-title{font-size:30px}
-  .app-home-grid{grid-template-columns:1fr;gap:16px}
-  .app-menu-card{min-height:154px;padding:22px}
-  .app-menu-title{font-size:23px}
-  .app-menu-icon{width:52px;height:52px;font-size:27px;margin-bottom:13px}
-}
 </style>
   <script src="https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js"></script>
 
@@ -1253,42 +1182,6 @@ Object.defineProperty(window.google.script, 'run', { get: makeGasRunner });
 <!-- BAAC_PWA_BUILD_20260920_SAFE_SYNC_FC_SUBJECT -->
 </head>
 <body>
-
-  <div id="appHomeShell" class="app-home-shell" aria-label="หน้าหลัก BAAC SMART OUTLET">
-    <div class="app-home-topbar">
-      <div>
-        <div class="app-home-brand">BAAC SMART OUTLET</div>
-        <div class="app-home-sub">ระบบบริหารร้านฝากขายอัจฉริยะ</div>
-      </div>
-      <div id="appHomeStatus" class="app-home-status">
-        <span class="app-home-status-dot"></span>
-        <span id="appHomeStatusText">ออนไลน์</span>
-      </div>
-    </div>
-    <div class="app-home-main">
-      <div class="app-home-title">หน้าหลัก</div>
-      <div class="app-home-desc">เลือกเมนูที่ต้องการใช้งาน</div>
-      <div class="app-home-grid">
-        <button class="app-menu-card" onclick="openPosFromHome()">
-          <div class="app-menu-icon">🛒</div>
-          <div class="app-menu-title">ขายสินค้า</div>
-          <div class="app-menu-note">เปิดหน้าขายสินค้า รองรับการขายแบบออฟไลน์และซิงก์เมื่อกลับมาออนไลน์</div>
-        </button>
-        <button class="app-menu-card stock" onclick="openStaffPage('stock')">
-          <div class="app-menu-icon">📦</div>
-          <div class="app-menu-title">รับสินค้า / จัดการสินค้า</div>
-          <div class="app-menu-note">ตรวจสอบสต็อก รับสินค้าเพิ่ม เพิ่มสินค้า แก้ไขข้อมูล และเปิด–ปิดใช้งานสินค้า</div>
-        </button>
-      </div>
-      <div class="app-home-foot">หน้าจอใช้งานจริงอยู่ใน BAAC SMART OUTLET แอปเดียว</div>
-    </div>
-  </div>
-
-  <div id="staffFrameShell" class="staff-frame-shell" aria-label="หน้าจัดการ STAFF">
-    <div id="staffLoading" class="staff-loading">กำลังเปิดหน้าจัดการสินค้า...</div>
-    <iframe id="staffFrame" title="BAAC SMART OUTLET - STAFF" allow="clipboard-read; clipboard-write"></iframe>
-  </div>
-
 
   <header class="topbar">
     <div>
@@ -2842,68 +2735,23 @@ Object.defineProperty(window.google.script, 'run', { get: makeGasRunner });
 </script>
 
 <script>
-  function updateAppHomeStatus(){
-    const el=document.getElementById('appHomeStatus');
-    const txt=document.getElementById('appHomeStatusText');
-    if(!el||!txt) return;
-    const online=navigator.onLine;
-    el.classList.toggle('offline',!online);
-    txt.textContent=online?'ออนไลน์':'ออฟไลน์';
-  }
-
-  function showAppHome(){
-    const frameShell=document.getElementById('staffFrameShell');
-    const frame=document.getElementById('staffFrame');
-    const home=document.getElementById('appHomeShell');
-    if(frameShell) frameShell.classList.remove('show');
-    if(frame) frame.src='about:blank';
-    if(home) home.style.display='flex';
-    updateAppHomeStatus();
-    window.scrollTo(0,0);
-  }
-
-  function openPosFromHome(){
-    const home=document.getElementById('appHomeShell');
-    if(home) home.style.display='none';
-    const frameShell=document.getElementById('staffFrameShell');
-    if(frameShell) frameShell.classList.remove('show');
-    window.scrollTo(0,0);
-  }
-
-  function openStaffPage(page){
+  function goHome(){
     if(!navigator.onLine){
-      if(typeof showAppAlert==='function'){
-        showAppAlert('หน้าจัดการสินค้าต้องเชื่อมต่ออินเทอร์เน็ต','ออฟไลน์','error');
-      }else{
-        alert('หน้าจัดการสินค้าต้องเชื่อมต่ออินเทอร์เน็ต');
-      }
+      showAppAlert(
+        'ขณะออฟไลน์ ระบบจะคงอยู่ที่หน้าขายสินค้าเพื่อให้ขายต่อได้',
+        'ออฟไลน์',
+        'warning'
+      );
       return;
     }
-    const home=document.getElementById('appHomeShell');
-    const frameShell=document.getElementById('staffFrameShell');
-    const frame=document.getElementById('staffFrame');
-    const loading=document.getElementById('staffLoading');
-    if(home) home.style.display='none';
-    if(loading){loading.classList.remove('hide');loading.textContent='กำลังเปิดหน้าจัดการสินค้า...';}
-    if(frameShell) frameShell.classList.add('show');
-    if(frame){
-      frame.onload=()=>{if(loading) loading.classList.add('hide')};
-      frame.src=BAAC_API_URL+'?page='+encodeURIComponent(page||'stock')+'&embed=github';
+
+    var homeUrl = BAAC_API_URL + '?page=index';
+    try{
+      window.top.location.href = homeUrl;
+    }catch(e){
+      window.location.href = homeUrl;
     }
   }
-
-  function goHome(){ showAppHome(); }
-
-  window.addEventListener('message',function(event){
-    const data=event && event.data;
-    if(data && data.type==='BAAC_GO_HOME') showAppHome();
-  });
-  window.addEventListener('online',updateAppHomeStatus);
-  window.addEventListener('offline',updateAppHomeStatus);
-  document.addEventListener('DOMContentLoaded',function(){
-    updateAppHomeStatus();
-    showAppHome();
-  });
 </script>
 
 </body>
