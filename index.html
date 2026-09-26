@@ -65,6 +65,19 @@
           padding:13px 17px;font-size:20px;outline:none;background:#fff
         }
         .search:focus{border-color:#5daf7d}
+        .category-bar{
+          width:100%;display:flex;gap:9px;align-items:center;overflow-x:auto;overflow-y:hidden;
+          white-space:nowrap;padding:2px 2px 7px;-webkit-overflow-scrolling:touch;scrollbar-width:thin
+        }
+        .category-btn{
+          flex:0 0 auto;border:1px solid #cfe3d5;background:#edf7f0;color:#365447;
+          border-radius:16px;padding:9px 16px;font-size:18px;font-weight:700;cursor:pointer;
+          font-family:inherit;line-height:1.15
+        }
+        .category-btn.active{
+          background:#08783f;color:#fff;border-color:#08783f;
+          box-shadow:0 3px 8px rgba(8,120,63,.18)
+        }
         .products{
           display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:15px;
           max-height:calc(100vh - 175px);overflow:auto;padding:3px 5px 20px 3px
@@ -866,6 +879,8 @@
       .action{padding:7px 10px !important;font-size:15px !important;border-radius:12px !important;}
       .toolbar{margin-bottom:8px !important;}
       .search{padding:9px 12px !important;font-size:17px !important;border-radius:14px !important;}
+      .category-bar{gap:7px !important;padding:1px 1px 5px !important;}
+      .category-btn{padding:7px 13px !important;font-size:16px !important;border-radius:13px !important;}
 
       .products{
         height:calc(100% - 92px) !important;
@@ -1033,7 +1048,7 @@
       }
       .product-image{
         height:118px !important;
-        margin-bottom:5px !important;
+        margin-bottom:9px !important;
         border-radius:14px !important;
       }
       .product-image img{
@@ -1247,7 +1262,7 @@
             <button class="action resume" onclick="openHeldBills()">▶ บิลที่พักไว้ <span id="heldCount">0</span></button>
           </div>
           <div class="toolbar">
-            <input id="search" class="search" placeholder="ค้นหาชื่อสินค้า หรือรหัสสินค้า..." oninput="renderProducts()">
+            <div id="categoryBar" class="category-bar" aria-label="ประเภทสินค้า"></div>
           </div>
           <div id="products" class="products"></div>
         </section>
@@ -1407,6 +1422,7 @@
       let cart = [];
       let paymentMethod = '';
       let currentMember = null;
+      let selectedCategory = 'ทั้งหมด';
 
       document.addEventListener('DOMContentLoaded', function(){
         restoreCachedProducts();
@@ -1614,12 +1630,50 @@
         return false;
       }
 
-      function renderProducts(){
-        const q = document.getElementById('search').value.trim().toLowerCase();
-        const box = document.getElementById('products');
+      function getProductCategories(){
+        const seen = new Set();
+        const categories = [];
 
-        const list = products.filter(function(p){
-          return !q || p.name.toLowerCase().includes(q) || p.id.toLowerCase().includes(q);
+        (Array.isArray(products) ? products : []).forEach(function(p){
+          const category = String((p && p.category) || '').trim();
+          if(category && !seen.has(category)){
+            seen.add(category);
+            categories.push(category);
+          }
+        });
+
+        return categories;
+      }
+
+      function renderCategoryBar(){
+        const bar = document.getElementById('categoryBar');
+        if(!bar) return;
+
+        const categories = getProductCategories();
+        if(selectedCategory !== 'ทั้งหมด' && categories.indexOf(selectedCategory) === -1){
+          selectedCategory = 'ทั้งหมด';
+        }
+
+        const items = ['ทั้งหมด'].concat(categories);
+        bar.innerHTML = items.map(function(category){
+          const active = category === selectedCategory;
+          return `<button type="button" class="category-btn ${active ? 'active' : ''}" data-category="${escAttr(category)}" onclick="selectCategory(this.dataset.category)">${esc(category)}</button>`;
+        }).join('');
+      }
+
+      function selectCategory(category){
+        selectedCategory = String(category || 'ทั้งหมด');
+        renderCategoryBar();
+        renderProducts();
+      }
+
+      function renderProducts(){
+        const box = document.getElementById('products');
+        renderCategoryBar();
+
+        const list = (Array.isArray(products) ? products : []).filter(function(p){
+          const category = String((p && p.category) || '').trim();
+          return selectedCategory === 'ทั้งหมด' || category === selectedCategory;
         });
 
         box.innerHTML = list.map(function(p){
