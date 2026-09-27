@@ -1500,6 +1500,136 @@ body.payment-page-open{
 }
 </style>
 
+
+<style id="baac-pos-payment-split-final">
+/* =========================================================
+   PAYMENT PAGE — iPAD LANDSCAPE SPLIT FINAL
+   แก้เฉพาะหน้าชำระเงิน ไม่แตะหน้าขาย/สินค้า/สีเดิม
+========================================================= */
+
+.payment-page-card{
+  height:auto !important;
+  min-height:0 !important;
+  overflow:visible !important;
+}
+
+.payment-column-title{
+  margin-bottom:12px;
+  color:#174d31;
+  font-size:22px;
+  font-weight:700;
+  line-height:1.2;
+}
+
+@media (min-width:900px){
+  .payment-page-content{
+    width:min(1120px,94vw) !important;
+    margin:16px auto 24px !important;
+  }
+
+  .payment-page-card{
+    display:grid !important;
+    grid-template-columns:minmax(0,.9fr) minmax(0,1.1fr) !important;
+    grid-template-rows:auto auto auto !important;
+    column-gap:24px !important;
+    row-gap:0 !important;
+    align-items:start !important;
+    padding:18px !important;
+    border-radius:24px !important;
+  }
+
+  .payment-page-totalbox{
+    grid-column:1 / -1 !important;
+    grid-row:1 !important;
+    margin:0 0 16px !important;
+  }
+
+  .payment-member-column{
+    grid-column:1 !important;
+    grid-row:2 / 4 !important;
+    margin-top:0 !important;
+    padding:18px !important;
+    border:1px solid #dce8df;
+    border-radius:20px;
+    background:rgba(250,253,251,.94);
+    min-width:0;
+  }
+
+  .payment-method-column{
+    grid-column:2 !important;
+    grid-row:2 !important;
+    margin-top:0 !important;
+    padding:18px !important;
+    border:1px solid #dce8df;
+    border-radius:20px;
+    background:rgba(250,253,251,.94);
+    min-width:0;
+  }
+
+  .payment-page-card > #checkoutBtn{
+    grid-column:2 !important;
+    grid-row:3 !important;
+    align-self:end !important;
+    margin-top:14px !important;
+  }
+
+  .payment-member-column .phone-row{
+    align-items:stretch;
+  }
+
+  .payment-member-column .input{
+    min-width:0;
+  }
+
+  .payment-method-column .paymethods{
+    grid-template-columns:1fr 1fr !important;
+  }
+
+  .payment-method-column .cashbox{
+    margin-top:12px !important;
+  }
+
+  .payment-method-column .cash-money-wrap{
+    overflow:visible !important;
+  }
+
+  .payment-method-column .banknotes,
+  .payment-method-column .banknote-grid{
+    grid-template-columns:repeat(4,minmax(0,1fr)) !important;
+    gap:6px !important;
+  }
+
+  .payment-method-column .money-btn{
+    min-width:0 !important;
+  }
+
+  .payment-method-column .prompt-proof-row{
+    margin-top:12px !important;
+  }
+}
+
+/* iPad แนวตั้ง / จอแคบ: กลับเป็น 1 คอลัมน์เพื่อไม่ให้บีบ */
+@media (max-width:899px){
+  .payment-page-content{
+    width:min(92vw,650px) !important;
+  }
+
+  .payment-page-card{
+    display:block !important;
+    padding:16px !important;
+  }
+
+  .payment-member-column,
+  .payment-method-column{
+    margin-top:12px !important;
+    padding:15px !important;
+    border:1px solid #dce8df;
+    border-radius:18px;
+    background:rgba(250,253,251,.94);
+  }
+}
+</style>
+
 </head>
         <body>
 
@@ -1573,7 +1703,8 @@ body.payment-page-open{
                   <span class="total" id="paymentPageTotal">0 บาท</span>
                 </div>
 
-              <div class="section">
+              <div class="section payment-member-column">
+                <div class="payment-column-title">ข้อมูลสมาชิก</div>
                 <div class="label">เบอร์โทรสมาชิก</div>
                 <div class="phone-row">
                   <input id="phone" class="input" type="tel" inputmode="numeric" maxlength="10" placeholder="กรอกเบอร์โทรศัพท์">
@@ -1583,7 +1714,8 @@ body.payment-page-open{
                 <button id="addMemberBtn" class="smallbtn add-member" onclick="openMemberModal()">+ เพิ่มสมาชิก</button>
               </div>
 
-              <div class="section">
+              <div class="section payment-method-column">
+                <div class="payment-column-title">รายละเอียดการชำระเงิน</div>
                 <div class="label">วิธีชำระเงิน</div>
                 <div class="paymethods">
                   <button id="cashBtn" class="paybtn" onclick="selectPayment('เงินสด')">เงินสด</button>
