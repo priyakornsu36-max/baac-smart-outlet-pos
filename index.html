@@ -1363,7 +1363,137 @@
         </script>
 
         <!-- BAAC_PWA_BUILD_20260920_SAFE_SYNC_FC_SUBJECT -->
-        </head>
+        
+<style>
+/* =========================================================
+   POS — TWO STEP CHECKOUT
+   STEP 1: products + cart + total + "ชำระเงิน →"
+   STEP 2: member + payment method + confirm
+========================================================= */
+.sale-products-panel,
+.sale-cart-panel{
+  min-height:calc(100vh - 115px);
+}
+
+.sale-cart-panel{
+  display:flex;
+  flex-direction:column;
+}
+
+.sale-cart-panel .cart{
+  flex:1 1 auto;
+  max-height:none !important;
+  min-height:180px;
+  overflow:auto;
+}
+
+.sale-cart-footer{
+  margin-top:auto;
+  padding-top:8px;
+  background:linear-gradient(180deg,rgba(255,255,255,0),rgba(255,255,255,.98) 16%);
+}
+
+.go-payment-btn{
+  width:100%;
+  min-height:58px;
+  border:0;
+  border-radius:19px;
+  padding:12px 16px;
+  background:#08783f;
+  color:#fff;
+  font-size:23px;
+  font-weight:700;
+  cursor:pointer;
+  box-shadow:0 7px 0 #045a2e;
+}
+.go-payment-btn:active{
+  transform:translateY(4px);
+  box-shadow:0 3px 0 #045a2e;
+}
+
+.payment-step-panel{
+  display:none;
+  grid-column:1 / -1;
+  width:min(760px,96vw);
+  margin:0 auto;
+}
+
+.layout.payment-mode{
+  grid-template-columns:1fr !important;
+}
+.layout.payment-mode .sale-products-panel,
+.layout.payment-mode .sale-cart-panel{
+  display:none !important;
+}
+.layout.payment-mode .payment-step-panel{
+  display:block !important;
+}
+
+.payment-step-head{
+  display:flex;
+  align-items:center;
+  justify-content:space-between;
+  gap:12px;
+  margin-bottom:18px;
+}
+.payment-back{
+  border:0;
+  border-radius:15px;
+  min-height:44px;
+  padding:9px 15px;
+  background:#edf3ef;
+  color:#174d31;
+  font-size:18px;
+  font-weight:700;
+  cursor:pointer;
+}
+.payment-step-title{
+  font-size:30px;
+  font-weight:700;
+}
+.payment-summary{
+  display:flex;
+  align-items:center;
+  justify-content:space-between;
+  gap:16px;
+  padding:16px 18px;
+  border-radius:20px;
+  background:#e5f4e9;
+  margin-bottom:18px;
+}
+.payment-summary-label{
+  font-size:20px;
+  font-weight:700;
+}
+.payment-summary-total{
+  font-size:34px;
+  color:#08783f;
+  font-weight:700;
+}
+
+@media (min-width:700px) and (max-width:1366px){
+  .layout{
+    grid-template-columns:minmax(0,1fr) 39% !important;
+  }
+  .sale-cart-panel .cart{
+    min-height:260px !important;
+  }
+}
+
+@media (max-width:699px){
+  .payment-step-panel{
+    width:94vw;
+  }
+  .payment-step-title{
+    font-size:25px;
+  }
+  .payment-summary-total{
+    font-size:29px;
+  }
+}
+</style>
+
+</head>
         <body>
 
           <header class="topbar">
@@ -1382,7 +1512,7 @@
           </header>
 
           <main class="layout">
-            <section class="panel">
+            <section class="panel sale-products-panel">
               <div class="pos-actions">
                 <button class="action history" onclick="openHistory()">🧾 สรุปรายการขาย</button>
                 <button class="action hold" onclick="holdBill()">⏸ พักบิล</button>
@@ -1394,13 +1524,37 @@
               <div id="products" class="products"></div>
             </section>
 
-            <aside class="panel">
+            <aside class="panel sale-cart-panel">
               <div class="cart-title">รายการขาย</div>
               <div id="cart" class="cart"></div>
 
               <div class="totalbox">
                 <span class="total-label">ยอดรวม</span>
                 <span class="total" id="total">0 บาท</span>
+              </div>
+
+              <div class="sale-cart-footer">
+                <button
+                  id="goPaymentBtn"
+                  type="button"
+                  class="go-payment-btn"
+                  onclick="openPaymentStep()"
+                >
+                  ชำระเงิน →
+                </button>
+              </div>
+            </aside>
+
+            <section id="paymentStepPanel" class="panel payment-step-panel">
+              <div class="payment-step-head">
+                <button type="button" class="payment-back" onclick="backToSaleStep()">← กลับ</button>
+                <div class="payment-step-title">ชำระเงิน</div>
+                <div style="width:84px"></div>
+              </div>
+
+              <div class="payment-summary">
+                <span class="payment-summary-label">ยอดที่ต้องชำระ</span>
+                <span id="paymentStepTotal" class="payment-summary-total">0 บาท</span>
               </div>
 
               <div class="section">
@@ -1496,7 +1650,7 @@
               </div>
 
               <button id="checkoutBtn" class="checkout" onclick="checkout()">ชำระเงิน</button>
-            </aside>
+            </section>
           </main>
 
           <div id="memberModal" class="modal">
@@ -1904,7 +2058,7 @@
                   onclick="addToCart('${escAttr(p.id)}')">
                   <div class="product-image">
                     ${p.image
-                      ? `<img src="${esc(p.image)}" alt="${esc(p.name)}" onerror="this.style.display='none';this.nextElementSibling.style.display='flex'">`
+                      ? `<img src="${esc(normalizePosImageUrl(p.image))}" alt="${esc(p.name)}" onerror="this.style.display='none';this.nextElementSibling.style.display='flex'">`
                       : ''}
                     <div class="product-placeholder" style="${p.image ? 'display:none' : 'display:flex'}">🛍️</div>
                   </div>
@@ -1951,6 +2105,10 @@
 
           function renderCart(){
             const box = document.getElementById('cart');
+            const paymentStepTotal = document.getElementById('paymentStepTotal');
+            if(paymentStepTotal){
+              paymentStepTotal.textContent = money(getTotal()) + ' บาท';
+            }
             if(!cart.length){
               box.innerHTML = '<div class="empty">ยังไม่มีสินค้า</div>';
             }else{
@@ -1962,7 +2120,7 @@
                         ${(() => {
                           const p = products.find(p => p.id === x.id);
                           return p && p.image
-                            ? `<img src="${esc(p.image)}" alt="${esc(x.name)}" onerror="this.style.display='none';this.nextElementSibling.style.display='flex'"><span style="display:none">🛍️</span>`
+                            ? `<img src="${esc(normalizePosImageUrl(p.image))}" alt="${esc(x.name)}" onerror="this.style.display='none';this.nextElementSibling.style.display='flex'"><span style="display:none">🛍️</span>`
                             : `<span>🛍️</span>`;
                         })()}
                       </div>
@@ -2596,6 +2754,53 @@
             });
           }
 
+
+          function openPaymentStep(){
+            if(!cart.length){
+              showAppAlert(
+                'กรุณาเลือกสินค้าก่อนเข้าสู่หน้าชำระเงิน',
+                'ยังไม่มีสินค้าในบิล',
+                'error'
+              );
+              return;
+            }
+
+            const layout=document.querySelector('main.layout');
+            if(layout) layout.classList.add('payment-mode');
+
+            const totalEl=document.getElementById('paymentStepTotal');
+            if(totalEl){
+              totalEl.textContent=money(getTotal())+' บาท';
+            }
+
+            window.scrollTo({top:0,behavior:'smooth'});
+          }
+
+
+          function backToSaleStep(){
+            const layout=document.querySelector('main.layout');
+            if(layout) layout.classList.remove('payment-mode');
+            window.scrollTo({top:0,behavior:'smooth'});
+          }
+
+
+          function normalizePosImageUrl(raw){
+            raw=String(raw||'').trim();
+            if(!raw) return '';
+
+            let m=raw.match(/[?&]id=([a-zA-Z0-9_-]+)/);
+            if(!m){
+              m=raw.match(/\/d\/([a-zA-Z0-9_-]+)/);
+            }
+
+            return m
+              ? 'https://drive.google.com/thumbnail?id='+
+                  encodeURIComponent(m[1])+
+                  '&sz=w900'
+              : raw;
+          }
+
+
           async function checkout(){
             if(!cart.length){ showAppAlert('กรุณาเลือกสินค้า','ยังไม่มีสินค้าในบิล','error'); return; }
             if(!paymentMethod){ showAppAlert('กรุณาเลือก เงินสด หรือ พร้อมเพย์','วิธีชำระเงิน','error'); return; }
@@ -2717,6 +2922,7 @@
 
 
           function newSale(){
+            backToSaleStep();
             cart = [];
             paymentMethod = '';
             currentMember = null;
@@ -3145,6 +3351,7 @@
           }
 
           async function holdBill(){
+            backToSaleStep();
             if(!cart.length) return showAppAlert('ยังไม่มีสินค้าในบิล','พักบิล','error');
 
             const note = await showHoldNoteDialog();
