@@ -898,7 +898,7 @@
 
           .cart-title{font-size:22px !important;margin-bottom:5px !important;}
           .cart{
-            max-height:19vh !important;
+            max-height:24vh !important;
             overflow-y:auto !important;
           }
           .cart-row{padding:7px 0 !important;}
@@ -909,9 +909,9 @@
           .qty button{width:29px !important;height:29px !important;font-size:18px !important;}
           .qty span{font-size:17px !important;}
 
-          .totalbox{margin:7px 0 !important;padding:8px 11px !important;border-radius:14px !important;}
-          .total-label{font-size:18px !important;}
-          .total{font-size:27px !important;}
+          .totalbox{margin:5px 0 !important;padding:6px 10px !important;border-radius:13px !important;}
+          .total-label{font-size:17px !important;}
+          .total{font-size:25px !important;}
 
           .section{margin-top:7px !important;}
           .label{font-size:16px !important;margin-bottom:4px !important;}
@@ -975,10 +975,137 @@
             height:38vh !important;
             grid-template-columns:repeat(3,minmax(0,1fr)) !important;
           }
-          .cart{max-height:16vh !important;}
+          .cart{max-height:21vh !important;}
         }
 
             /* ===== ONLINE / OFFLINE STATUS ===== */
+
+          /* ===== PROMPTPAY PROOF ===== */
+          .prompt-proof-row{
+            display:none;
+            align-items:center;
+            gap:7px;
+            margin-top:7px;
+            min-height:44px;
+            color:#365447;
+            font-size:15px;
+          }
+          .prompt-proof-row.show{display:flex}
+          .prompt-proof-text{white-space:nowrap}
+          .prompt-proof-sep{color:#a7b3ac;margin:0 1px}
+          .prompt-proof-btn{
+            width:42px;
+            height:42px;
+            padding:0;
+            border:1.5px solid #cddfd3;
+            border-radius:11px;
+            background:#f4f8f5;
+            overflow:hidden;
+            display:inline-flex;
+            align-items:center;
+            justify-content:center;
+            cursor:pointer;
+            box-shadow:0 3px 0 rgba(39,82,57,.12);
+          }
+          .prompt-proof-btn.missing{
+            border-color:#e1ae72;
+            background:#fff7e9;
+          }
+          .prompt-proof-btn img{
+            width:100%;
+            height:100%;
+            object-fit:cover;
+            display:block;
+          }
+          .prompt-proof-icon{
+            width:22px;
+            height:22px;
+            display:block;
+            opacity:.78;
+          }
+          .proof-viewer-overlay{
+            display:none;
+            position:fixed;
+            inset:0;
+            z-index:160;
+            background:rgba(8,27,18,.78);
+            align-items:center;
+            justify-content:center;
+            padding:22px;
+          }
+          .proof-viewer-overlay.show{display:flex}
+          .proof-viewer-card{
+            width:min(680px,94vw);
+            max-height:92vh;
+            background:#fff;
+            border-radius:22px;
+            overflow:hidden;
+            box-shadow:0 26px 80px rgba(0,0,0,.35);
+          }
+          .proof-viewer-head{
+            display:flex;
+            justify-content:flex-end;
+            padding:10px 12px 4px;
+          }
+          .proof-viewer-close{
+            width:38px;
+            height:38px;
+            border:0;
+            border-radius:50%;
+            background:#eef3ef;
+            color:#173e31;
+            font-size:27px;
+            line-height:1;
+          }
+          .proof-viewer-body{
+            padding:4px 16px 16px;
+            text-align:center;
+          }
+          .proof-viewer-image{
+            display:block;
+            max-width:100%;
+            max-height:68vh;
+            margin:0 auto;
+            border-radius:15px;
+            object-fit:contain;
+            background:#f5f6f5;
+          }
+          .proof-viewer-actions{
+            display:flex;
+            justify-content:center;
+            margin-top:11px;
+          }
+          .proof-change-btn{
+            border:0;
+            border-radius:13px;
+            padding:8px 13px;
+            background:#e2f1e7;
+            color:#08783f;
+            font-weight:700;
+          }
+          .history-payment-line{
+            display:flex;
+            align-items:center;
+            gap:7px;
+            flex-wrap:wrap;
+          }
+          .history-proof-thumb{
+            width:36px;
+            height:36px;
+            padding:0;
+            border:1px solid #d4e2d8;
+            border-radius:9px;
+            overflow:hidden;
+            background:#f3f7f4;
+            vertical-align:middle;
+          }
+          .history-proof-thumb img{
+            width:100%;
+            height:100%;
+            object-fit:cover;
+            display:block;
+          }
+
             .connection-wrap{display:flex;align-items:center;gap:10px}
             .connection-status{
               display:flex;align-items:center;gap:7px;
@@ -1292,6 +1419,34 @@
                   <button id="cashBtn" class="paybtn" onclick="selectPayment('เงินสด')">เงินสด</button>
                   <button id="promptBtn" class="paybtn" onclick="selectPayment('พร้อมเพย์')">พร้อมเพย์</button>
                 </div>
+
+                <div id="promptProofRow" class="prompt-proof-row">
+                  <span class="prompt-proof-text"><b>วิธีชำระเงิน:</b> พร้อมเพย์</span>
+                  <span class="prompt-proof-sep">|</span>
+
+                  <button
+                    id="promptProofBtn"
+                    type="button"
+                    class="prompt-proof-btn missing"
+                    onclick="handlePromptProofButton()"
+                    aria-label="หลักฐานการโอนเงิน"
+                    title="หลักฐานการโอนเงิน"
+                  >
+                    <svg id="promptProofIcon" class="prompt-proof-icon" viewBox="0 0 24 24" aria-hidden="true">
+                      <path fill="#08783f" d="M9.2 4 7.8 6H5a3 3 0 0 0-3 3v8a3 3 0 0 0 3 3h14a3 3 0 0 0 3-3V9a3 3 0 0 0-3-3h-2.8L14.8 4H9.2Zm2.8 5a4.5 4.5 0 1 1 0 9 4.5 4.5 0 0 1 0-9Zm0 2a2.5 2.5 0 1 0 0 5 2.5 2.5 0 0 0 0-5Z"/>
+                    </svg>
+                    <img id="promptProofThumb" alt="" style="display:none">
+                  </button>
+
+                  <input
+                    id="promptProofInput"
+                    type="file"
+                    accept="image/*"
+                    style="display:none"
+                    onchange="handlePromptProofFile(event)"
+                  >
+                </div>
+
                 <div id="cashbox" class="cashbox">
                   <div class="cash-input-row">
           <input id="cashReceived" class="input" type="number" min="0" placeholder="จำนวนเงินที่รับ" oninput="calcChange()">
@@ -1397,6 +1552,21 @@
           </div>
 
 
+          <div id="proofViewerOverlay" class="proof-viewer-overlay" onclick="closeProofViewerFromBg(event)">
+            <div class="proof-viewer-card">
+              <div class="proof-viewer-head">
+                <button type="button" class="proof-viewer-close" onclick="closeProofViewer()" aria-label="ปิด">×</button>
+              </div>
+              <div class="proof-viewer-body">
+                <img id="proofViewerImage" class="proof-viewer-image" alt="หลักฐานการโอนเงิน">
+                <div id="proofViewerActions" class="proof-viewer-actions">
+                  <button type="button" class="proof-change-btn" onclick="changePromptProof()">เปลี่ยนรูป</button>
+                </div>
+              </div>
+            </div>
+          </div>
+
+
           <div id="appDialogOverlay" class="app-dialog-overlay">
             <div class="app-dialog" role="dialog" aria-modal="true">
               <div id="appDialogIcon" class="app-dialog-icon">✓</div>
@@ -1422,6 +1592,7 @@
           let cart = [];
           let paymentMethod = '';
           let currentMember = null;
+          let promptProofDataUrl = '';
           let selectedCategory = 'ทั้งหมด';
 
           document.addEventListener('DOMContentLoaded', function(){
@@ -1925,6 +2096,180 @@
               .addMemberByStaff({name:name, phone:phone});
           }
 
+          function resetPromptProof(){
+            promptProofDataUrl = '';
+
+            const input = document.getElementById('promptProofInput');
+            const thumb = document.getElementById('promptProofThumb');
+            const icon = document.getElementById('promptProofIcon');
+            const btn = document.getElementById('promptProofBtn');
+
+            if(input) input.value = '';
+            if(thumb){
+              thumb.src = '';
+              thumb.style.display = 'none';
+            }
+            if(icon) icon.style.display = 'block';
+            if(btn) btn.classList.add('missing');
+          }
+
+          function updatePromptProofRow(){
+            const row = document.getElementById('promptProofRow');
+            if(!row) return;
+            row.classList.toggle('show', paymentMethod === 'พร้อมเพย์');
+          }
+
+          function handlePromptProofButton(){
+            if(promptProofDataUrl){
+              openProofViewer(promptProofDataUrl, true);
+              return;
+            }
+
+            const input = document.getElementById('promptProofInput');
+            if(input) input.click();
+          }
+
+          function handlePromptProofFile(event){
+            const file = event && event.target && event.target.files
+              ? event.target.files[0]
+              : null;
+
+            if(!file) return;
+
+            if(!/^image\//i.test(file.type || '')){
+              showAppAlert('กรุณาเลือกไฟล์รูปภาพ','หลักฐานการโอนเงิน','error');
+              event.target.value = '';
+              return;
+            }
+
+            compressPromptProofImage(file)
+              .then(function(dataUrl){
+                promptProofDataUrl = dataUrl;
+
+                const thumb = document.getElementById('promptProofThumb');
+                const icon = document.getElementById('promptProofIcon');
+                const btn = document.getElementById('promptProofBtn');
+
+                if(thumb){
+                  thumb.src = dataUrl;
+                  thumb.style.display = 'block';
+                }
+                if(icon) icon.style.display = 'none';
+                if(btn) btn.classList.remove('missing');
+              })
+              .catch(function(err){
+                showAppAlert(
+                  err && err.message ? err.message : 'ไม่สามารถอ่านรูปหลักฐานได้',
+                  'หลักฐานการโอนเงิน',
+                  'error'
+                );
+              });
+          }
+
+          function compressPromptProofImage(file){
+            return new Promise(function(resolve,reject){
+              const reader = new FileReader();
+
+              reader.onerror = function(){
+                reject(new Error('ไม่สามารถอ่านรูปหลักฐานได้'));
+              };
+
+              reader.onload = function(){
+                const img = new Image();
+
+                img.onerror = function(){
+                  reject(new Error('รูปหลักฐานไม่ถูกต้อง'));
+                };
+
+                img.onload = function(){
+                  try{
+                    const maxSide = 1400;
+                    let width = img.naturalWidth || img.width;
+                    let height = img.naturalHeight || img.height;
+
+                    if(width > maxSide || height > maxSide){
+                      const scale = Math.min(maxSide / width, maxSide / height);
+                      width = Math.max(1, Math.round(width * scale));
+                      height = Math.max(1, Math.round(height * scale));
+                    }
+
+                    const canvas = document.createElement('canvas');
+                    canvas.width = width;
+                    canvas.height = height;
+
+                    const ctx = canvas.getContext('2d');
+                    ctx.fillStyle = '#ffffff';
+                    ctx.fillRect(0,0,width,height);
+                    ctx.drawImage(img,0,0,width,height);
+
+                    const dataUrl = canvas.toDataURL('image/jpeg',0.78);
+
+                    if(dataUrl.length > 2.4 * 1024 * 1024){
+                      reject(new Error('รูปสลิปมีขนาดใหญ่เกินไป กรุณาถ่ายใหม่ให้เห็นเฉพาะสลิป'));
+                      return;
+                    }
+
+                    resolve(dataUrl);
+                  }catch(e){
+                    reject(e);
+                  }
+                };
+
+                img.src = reader.result;
+              };
+
+              reader.readAsDataURL(file);
+            });
+          }
+
+          function proofPreviewUrl(url){
+            const raw = String(url || '');
+            const m =
+              raw.match(/\/d\/([a-zA-Z0-9_-]+)/) ||
+              raw.match(/[?&]id=([a-zA-Z0-9_-]+)/);
+
+            return m
+              ? 'https://drive.google.com/thumbnail?id=' + encodeURIComponent(m[1]) + '&sz=w1600'
+              : raw;
+          }
+
+          function openProofViewer(src, allowChange){
+            const overlay = document.getElementById('proofViewerOverlay');
+            const image = document.getElementById('proofViewerImage');
+            const actions = document.getElementById('proofViewerActions');
+
+            if(!overlay || !image) return;
+
+            image.src = String(src || '');
+            if(actions) actions.style.display = allowChange ? 'flex' : 'none';
+            overlay.classList.add('show');
+          }
+
+          function openSavedProofViewer(url){
+            openProofViewer(proofPreviewUrl(url), false);
+          }
+
+          function closeProofViewer(){
+            const overlay = document.getElementById('proofViewerOverlay');
+            if(overlay) overlay.classList.remove('show');
+          }
+
+          function closeProofViewerFromBg(event){
+            if(event && event.target && event.target.id === 'proofViewerOverlay'){
+              closeProofViewer();
+            }
+          }
+
+          function changePromptProof(){
+            closeProofViewer();
+            const input = document.getElementById('promptProofInput');
+            if(input){
+              input.value = '';
+              input.click();
+            }
+          }
+
+
           function selectPayment(method){
             paymentMethod = method;
             document.getElementById('cashBtn').classList.toggle('active', method === 'เงินสด');
@@ -1933,7 +2278,11 @@
 
             if(method === 'พร้อมเพย์'){
               document.getElementById('cashReceived').value = '';
+            }else{
+              resetPromptProof();
             }
+
+            updatePromptProofRow();
             calcChange();
           }
 
@@ -2251,6 +2600,15 @@
             if(!cart.length){ showAppAlert('กรุณาเลือกสินค้า','ยังไม่มีสินค้าในบิล','error'); return; }
             if(!paymentMethod){ showAppAlert('กรุณาเลือก เงินสด หรือ พร้อมเพย์','วิธีชำระเงิน','error'); return; }
 
+            if(paymentMethod === 'พร้อมเพย์' && !promptProofDataUrl){
+              showAppAlert(
+                'กรุณาแนบหลักฐานการโอนเงินก่อนบันทึกการขาย',
+                'ยังไม่มีหลักฐานการโอนเงิน',
+                'error'
+              );
+              return;
+            }
+
             const total = getTotal();
             const cashReceived = Number(document.getElementById('cashReceived').value || 0);
 
@@ -2275,6 +2633,7 @@
               paymentMethod: paymentMethod,
               cashReceived: cashReceived,
               phone: phone,
+              proofDataUrl: paymentMethod === 'พร้อมเพย์' ? promptProofDataUrl : '',
               offlineCreatedAt: new Date().toISOString()
             };
 
@@ -2366,6 +2725,8 @@
             document.getElementById('cashBtn').classList.remove('active');
             document.getElementById('promptBtn').classList.remove('active');
             document.getElementById('cashbox').style.display = 'none';
+            resetPromptProof();
+            updatePromptProofRow();
             document.getElementById('memberbox').style.display = 'none';
             document.getElementById('addMemberBtn').style.display = 'none';
             document.getElementById('successModal').classList.remove('show');
@@ -2469,7 +2830,17 @@
                     '<div class="bill-member"><b>สมาชิก:</b> ' + memberText + '</div>' +
                     '<div class="bill-items">' + items + '</div>' +
                     '<div class="bill-bottom">' +
-                      '<div><b>วิธีชำระเงิน:</b> ' + esc(bill.payment || '-') + '</div>' +
+                      '<div class="history-payment-line"><b>วิธีชำระเงิน:</b> ' + esc(bill.payment || '-') +
+                      (
+                        bill.payment === 'พร้อมเพย์' && bill.proofUrl
+                          ? '<span>|</span><button type="button" class="history-proof-thumb" title="หลักฐานการโอนเงิน" aria-label="หลักฐานการโอนเงิน" data-proofurl="' +
+                            encodeURIComponent(bill.proofUrl) +
+                            '" onclick="openSavedProofViewer(decodeURIComponent(this.getAttribute(\'data-proofurl\')))">' +
+                            '<img src="' + esc(proofPreviewUrl(bill.proofUrl)) + '" alt="">' +
+                            '</button>'
+                          : ''
+                      ) +
+                      '</div>' +
                       (cancelled ? '' :
                         '<button class="voidbtn" data-saleids="' +
                         encodeURIComponent(JSON.stringify(bill.saleIds || [])) +
@@ -2796,6 +3167,8 @@
             document.getElementById('cashBtn').classList.remove('active');
             document.getElementById('promptBtn').classList.remove('active');
             document.getElementById('cashbox').style.display='none';
+            resetPromptProof();
+            updatePromptProofRow();
             resetMember();
             renderCart();
             showToast('พักบิลไว้แล้ว');
