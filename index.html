@@ -1899,6 +1899,7 @@ body.payment-page-open{
           let currentMember = null;
           let promptProofDataUrl = '';
           let selectedCategory = 'ทั้งหมด';
+          const productImageLoadState = {};
 
           document.addEventListener('DOMContentLoaded', function(){
             restoreCachedProducts();
@@ -2157,6 +2158,108 @@ body.payment-page-open{
             }, 2200);
           }
 
+
+          function productImageCacheKey(raw){
+            const id = extractDriveFileId(raw);
+            return id ? 'baacPosProductImage_' + id : '';
+          }
+
+
+          function getCachedProductImage(raw){
+            const key = productImageCacheKey(raw);
+            if(!key) return '';
+
+            try{
+              return localStorage.getItem(key) || '';
+            }catch(e){
+              return '';
+            }
+          }
+
+
+          function saveCachedProductImage(raw, dataUrl){
+            const key = productImageCacheKey(raw);
+            if(!key || !dataUrl) return;
+
+            try{
+              localStorage.setItem(key, dataUrl);
+            }catch(e){}
+          }
+
+
+          function productDisplayImage(product){
+            if(!product) return '';
+
+            if(product._imageData){
+              return product._imageData;
+            }
+
+            const cached = getCachedProductImage(product.image);
+
+            if(cached){
+              product._imageData = cached;
+              return cached;
+            }
+
+            return firstProductImageSource(product.image);
+          }
+
+
+          function hydrateProductImages(list){
+            if(!navigator.onLine) return;
+
+            (Array.isArray(list) ? list : []).forEach(function(product){
+              if(!product || !product.image) return;
+
+              const cached = getCachedProductImage(product.image);
+
+              if(cached){
+                product._imageData = cached;
+                return;
+              }
+
+              const id = extractDriveFileId(product.image);
+
+              if(!id || productImageLoadState[id]){
+                return;
+              }
+
+              productImageLoadState[id] = true;
+
+              baacJsonp('productimage', {
+                url: product.image
+              })
+              .then(function(result){
+                if(
+                  result &&
+                  result.success &&
+                  result.dataUrl
+                ){
+                  product._imageData = result.dataUrl;
+
+                  saveCachedProductImage(
+                    product.image,
+                    result.dataUrl
+                  );
+
+                  renderProducts();
+                  renderCart();
+                }
+              })
+              .catch(function(error){
+                console.error(
+                  'โหลดรูปสินค้าไม่สำเร็จ',
+                  product.id,
+                  error
+                );
+              })
+              .finally(function(){
+                productImageLoadState[id] = false;
+              });
+            });
+          }
+
+
           function loadProducts(){
             if(!navigator.onLine){
               restoreCachedProducts();
@@ -2173,6 +2276,7 @@ body.payment-page-open{
                 }catch(e){}
                 renderProducts();
                 renderCart();
+                hydrateProductImages(products);
                 updateConnectionStatus();
               })
               .withFailureHandler(function(){
@@ -2293,6 +2397,20 @@ body.payment-page-open{
               return;
             }
 
+            const id = extractDriveFileId(raw);
+
+            if(id && navigator.onLine){
+              const product =
+                (Array.isArray(products) ? products : [])
+                  .find(function(p){
+                    return extractDriveFileId(p.image) === id;
+                  });
+
+              if(product){
+                hydrateProductImages([product]);
+              }
+            }
+
             img.style.display = 'none';
 
             const fallback = img.nextElementSibling;
@@ -2320,7 +2438,7 @@ body.payment-page-open{
                   <div class="product-image">
                     ${p.image
                       ? `<img
-                          src="${esc(firstProductImageSource(p.image))}"
+                          src="${esc(productDisplayImage(p))}"
                           data-original-image="${escAttr(p.image)}"
                           data-image-index="0"
                           alt="${esc(p.name)}"
@@ -2389,7 +2507,7 @@ body.payment-page-open{
                           const p = products.find(p => p.id === x.id);
                           return p && p.image
                             ? `<img
-                                src="${esc(firstProductImageSource(p.image))}"
+                                src="${esc(productDisplayImage(p))}"
                                 data-original-image="${escAttr(p.image)}"
                                 data-image-index="0"
                                 alt="${esc(x.name)}"
