@@ -7,7 +7,7 @@
           <title>BAAC SMART OUTLET - ขายสินค้า</title>
           <link rel="manifest" href="manifest.json">
           <meta name="theme-color" content="#007A33">
-          <meta name="baac-build" content="2026-09-21-fast-gold-v6">
+          <meta name="baac-build" content="2026-09-28-ipad-professional-v3">
           <style>
 
             /* ===== FC SUBJECT ROUNDED — same as customer/consignor pages ===== */
@@ -1105,6 +1105,23 @@
             object-fit:cover;
             display:block;
           }
+          .history-proof-fallback{
+            width:100%;
+            height:100%;
+            padding:2px;
+            box-sizing:border-box;
+            display:flex;
+            align-items:center;
+            justify-content:center;
+            text-align:center;
+            color:#08783f;
+            font-size:9px;
+            font-weight:700;
+            line-height:1.05;
+          }
+          .history-proof-thumb.loaded{
+            border-color:#9dcdb0;
+          }
 
             .connection-wrap{display:flex;align-items:center;gap:10px}
             .connection-status{
@@ -1851,6 +1868,17 @@ body.payment-page-open{
   min-width:0 !important;
   width:100% !important;
   padding:0 10px !important;
+  position:relative !important;
+  z-index:6 !important;
+  pointer-events:auto !important;
+  touch-action:manipulation !important;
+  -webkit-user-select:none !important;
+  user-select:none !important;
+}
+
+#paymentPage .payment-cash-input{
+  position:relative !important;
+  z-index:1 !important;
 }
 
 /* เหรียญ + ธนบัตร + ชำระพอดี = grid เดียว ขนาดเท่ากันจริง */
@@ -2277,7 +2305,11 @@ body.payment-page-open{
                       <button
                         type="button"
                         class="clear-cash-btn payment-clear-cash"
-                        onclick="clearCashReceived()"
+                        tabindex="-1"
+                        aria-label="ล้างจำนวนเงินที่รับ"
+                        onpointerdown="clearCashReceived(event)"
+                        ontouchstart="clearCashReceived(event)"
+                        onclick="clearCashReceived(event)"
                       >✕ ล้าง</button>
                     </div>
 
@@ -2692,9 +2724,9 @@ body.payment-page-open{
               icon.style.color = '#08783f';
 
               titleEl.textContent = 'พักบิล';
-              msgEl.textContent = 'ใส่หมายเหตุสำหรับบิลนี้ (ไม่บังคับ)';
+              msgEl.textContent = 'ระบุหมายเหตุ (ไม่บังคับ)';
               input.value = '';
-              input.placeholder = 'เช่น ชื่อคนซื้อ';
+              input.placeholder = '';
               input.style.display = 'block';
               input.style.borderColor = '';
 
@@ -3409,6 +3441,100 @@ body.payment-page-open{
               : raw;
           }
 
+
+          function loadSavedProofDataUrl(url){
+            url = String(url || '').trim();
+
+            if(!url){
+              return Promise.reject(new Error('ไม่พบ URL หลักฐานการโอนเงิน'));
+            }
+
+            const cached = getCachedProductImage(url);
+            if(cached){
+              return Promise.resolve(cached);
+            }
+
+            return baacJsonp('productimage', {url:url})
+              .then(function(result){
+                if(
+                  !result ||
+                  !result.success ||
+                  !result.dataUrl
+                ){
+                  throw new Error(
+                    result && result.message
+                      ? result.message
+                      : 'ไม่สามารถโหลดหลักฐานการโอนเงิน'
+                  );
+                }
+
+                saveCachedProductImage(url, result.dataUrl);
+                return result.dataUrl;
+              });
+          }
+
+
+          function hydrateHistoryProofImages(root){
+            root = root || document;
+
+            const buttons = root.querySelectorAll(
+              '.history-proof-thumb[data-proofurl]'
+            );
+
+            buttons.forEach(function(btn){
+              if(btn.getAttribute('data-proof-loaded') === '1'){
+                return;
+              }
+
+              const encoded = btn.getAttribute('data-proofurl') || '';
+              let url = '';
+
+              try{
+                url = decodeURIComponent(encoded);
+              }catch(e){
+                url = encoded;
+              }
+
+              if(!url) return;
+
+              const img = btn.querySelector('img');
+              const fallback = btn.querySelector('.history-proof-fallback');
+
+              btn.setAttribute('data-proof-loaded', 'loading');
+
+              loadSavedProofDataUrl(url)
+                .then(function(src){
+                  if(img){
+                    img.onload = function(){
+                      img.style.display = 'block';
+                      if(fallback) fallback.style.display = 'none';
+                      btn.classList.add('loaded');
+                      btn.setAttribute('data-proof-loaded', '1');
+                    };
+
+                    img.onerror = function(){
+                      img.style.display = 'none';
+                      if(fallback){
+                        fallback.style.display = 'flex';
+                        fallback.textContent = 'ดูหลักฐาน';
+                      }
+                      btn.setAttribute('data-proof-loaded', 'error');
+                    };
+
+                    img.src = src;
+                  }
+                })
+                .catch(function(){
+                  if(img) img.style.display = 'none';
+                  if(fallback){
+                    fallback.style.display = 'flex';
+                    fallback.textContent = 'ดูหลักฐาน';
+                  }
+                  btn.setAttribute('data-proof-loaded', 'error');
+                });
+            });
+          }
+
           function openProofViewer(src, allowChange){
             const overlay = document.getElementById('proofViewerOverlay');
             const image = document.getElementById('proofViewerImage');
@@ -3422,7 +3548,26 @@ body.payment-page-open{
           }
 
           function openSavedProofViewer(url){
-            openProofViewer(proofPreviewUrl(url), false);
+            url = String(url || '').trim();
+            if(!url) return;
+
+            const cached = getCachedProductImage(url);
+
+            if(cached){
+              openProofViewer(cached, false);
+              return;
+            }
+
+            showToast('กำลังโหลดหลักฐานการโอนเงิน...');
+
+            loadSavedProofDataUrl(url)
+              .then(function(src){
+                openProofViewer(src, false);
+              })
+              .catch(function(){
+                /* fallback สำหรับ browser ที่เปิด Drive ตรงได้ */
+                openProofViewer(proofPreviewUrl(url), false);
+              });
           }
 
           function closeProofViewer(){
@@ -3462,16 +3607,51 @@ body.payment-page-open{
             calcChange();
           }
 
-          function clearCashReceived(){
-            const input = document.getElementById('cashReceived');
-            if (!input) return;
+          let lastCashClearAt = 0;
 
+          function clearCashReceived(event){
+            if(event){
+              try{ event.preventDefault(); }catch(e){}
+              try{ event.stopPropagation(); }catch(e){}
+            }
+
+            const input = document.getElementById('cashReceived');
+            if(!input) return false;
+
+            /* ป้องกัน touchstart / pointerdown / click ยิงซ้ำ */
+            const now = Date.now();
+            const duplicateGesture = (now - lastCashClearAt) < 120;
+            lastCashClearAt = now;
+
+            /*
+              iPad/Safari บางรุ่นยังคงคีย์บอร์ดไว้แม้ input.blur()
+              จึงล็อก input เป็น readonly ชั่วคราวก่อน blur
+              แล้วค่อยคืนสถานะหลัง touch gesture จบ
+            */
+            input.readOnly = true;
             input.value = '';
             calcChange();
 
-            /* iPad/Safari: ปุ่ม ✕ ล้าง ต้องไม่เรียกแป้นพิมพ์ขึ้นมา
-               และถ้าแป้นพิมพ์เปิดอยู่ ให้ปิดทันที */
-            input.blur();
+            try{ input.blur(); }catch(e){}
+
+            const active = document.activeElement;
+            if(active && typeof active.blur === 'function'){
+              try{ active.blur(); }catch(e){}
+            }
+
+            if(event && event.currentTarget && typeof event.currentTarget.focus === 'function'){
+              try{
+                event.currentTarget.focus({preventScroll:true});
+              }catch(e){
+                try{ event.currentTarget.focus(); }catch(x){}
+              }
+            }
+
+            window.setTimeout(function(){
+              input.readOnly = false;
+            }, 320);
+
+            return false;
           }
 
           function setExactCash(){
@@ -4017,7 +4197,8 @@ body.payment-page-open{
                           ? '<span>|</span><button type="button" class="history-proof-thumb" title="หลักฐานการโอนเงิน" aria-label="หลักฐานการโอนเงิน" data-proofurl="' +
                             encodeURIComponent(bill.proofUrl) +
                             '" onclick="openSavedProofViewer(decodeURIComponent(this.getAttribute(\'data-proofurl\')))">' +
-                            '<img src="' + esc(proofPreviewUrl(bill.proofUrl)) + '" alt="">' +
+                            '<img src="" alt="หลักฐานการโอนเงิน" style="display:none">' +
+                            '<span class="history-proof-fallback">กำลังโหลด</span>' +
                             '</button>'
                           : ''
                       ) +
@@ -4034,6 +4215,10 @@ body.payment-page-open{
                       : '') +
                   '</div>';
                 }).join('');
+
+                /* โหลดรูปสลิปผ่าน Apps Script proxy
+                   ใช้เส้นทางเดียวกับรูปสินค้าที่ทดสอบบน iPad แล้ว */
+                hydrateHistoryProofImages(list);
               })
               .withFailureHandler(showError)
               .getBillsByDate(dateText);
