@@ -3465,9 +3465,13 @@ body.payment-page-open{
           function clearCashReceived(){
             const input = document.getElementById('cashReceived');
             if (!input) return;
+
             input.value = '';
             calcChange();
-            input.focus();
+
+            /* iPad/Safari: ปุ่ม ✕ ล้าง ต้องไม่เรียกแป้นพิมพ์ขึ้นมา
+               และถ้าแป้นพิมพ์เปิดอยู่ ให้ปิดทันที */
+            input.blur();
           }
 
           function setExactCash(){
