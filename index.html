@@ -12,7 +12,7 @@
           <meta name="apple-mobile-web-app-title" content="BAAC POS">
           <meta name="apple-mobile-web-app-status-bar-style" content="default">
           <meta name="theme-color" content="#007A33">
-          <meta name="baac-build" content="2026-10-01-pos-v8-icon">
+          <meta name="baac-build" content="2026-10-01-pos-v9-local-home">
           <style>
 
             /* ===== FC SUBJECT ROUNDED — same as customer/consignor pages ===== */
@@ -1221,7 +1221,7 @@
         const BAAC_API_URL = 'https://script.google.com/macros/s/AKfycbwCS4XlPPlEaZEasQqxCbXFkkom83QF9r86pehdXfq0C2M-bLqNgE5APMBAHOhKTgFmUQ/exec';
 
         if ('serviceWorker' in navigator) {
-          window.addEventListener('load', () => navigator.serviceWorker.register('./sw.js?v=8', { updateViaCache: 'none' }).catch(() => {}));
+          window.addEventListener('load', () => navigator.serviceWorker.register('./sw.js?v=9', { updateViaCache: 'none' }).catch(() => {}));
         }
 
         function baacJsonp(api, params) {
@@ -4648,21 +4648,14 @@ body.payment-page-open{
 
         <script>
           function goHome(){
-            if(!navigator.onLine){
-              showAppAlert(
-                'ขณะออฟไลน์ ระบบจะคงอยู่ที่หน้าขายสินค้าเพื่อให้ขายต่อได้',
-                'ออฟไลน์',
-                'warning'
-              );
-              return;
-            }
-
-            var homeUrl = BAAC_API_URL + '?page=index';
-            try{
-              window.top.location.href = homeUrl;
-            }catch(e){
-              window.location.href = homeUrl;
-            }
+            // POS is a standalone PWA. Do not navigate to the Apps Script
+            // deployment: restricted deployments redirect to Google sign-in.
+            // Return to the local sale screen without reloading or losing
+            // the current cart, held bills or pending offline transactions.
+            backToSalePage();
+            closeHistory();
+            closeHeldBills();
+            window.scrollTo(0, 0);
           }
         </script>
 
