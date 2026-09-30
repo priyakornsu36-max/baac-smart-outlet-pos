@@ -1221,7 +1221,7 @@
         const BAAC_API_URL = 'https://script.google.com/macros/s/AKfycbwCS4XlPPlEaZEasQqxCbXFkkom83QF9r86pehdXfq0C2M-bLqNgE5APMBAHOhKTgFmUQ/exec';
 
         if ('serviceWorker' in navigator) {
-          window.addEventListener('load', () => navigator.serviceWorker.register('./sw.js?v=11', { updateViaCache: 'none' }).catch(() => {}));
+          window.addEventListener('load', () => navigator.serviceWorker.register('./sw.js?v=12', { updateViaCache: 'none' }).catch(() => {}));
         }
 
         function baacJsonp(api, params) {
@@ -3727,7 +3727,7 @@ body.payment-page-open{
 
           function reserveOfflineStock(items){
             items.forEach(function(item){
-              const p = products.find(x => x.id === item.id);
+              const p = products.find(x => String(x.id) === String(item.id));
               if(p) p.stock = Math.max(Number(p.stock || 0) - Number(item.qty || 0), 0);
             });
             try{
