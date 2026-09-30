@@ -3125,10 +3125,10 @@ body.payment-page-open{
           }
 
           function addToCart(id){
-            const p = products.find(x => x.id === id);
+            const p = products.find(x => String(x.id) === String(id));
             if(!p || p.stock <= 0) return;
 
-            const row = cart.find(x => x.id === id);
+            const row = cart.find(x => String(x.id) === String(id));
             if(row){
               if(row.qty >= p.stock){ showAppAlert('สินค้าเหลือ ' + p.stock + ' ' + p.unit, 'สินค้าไม่พอ', 'error'); return; }
               row.qty++;
@@ -3139,11 +3139,11 @@ body.payment-page-open{
           }
 
           function changeQty(id, delta){
-            const row = cart.find(x => x.id === id);
+            const row = cart.find(x => String(x.id) === String(id));
             if(!row) return;
             const next = row.qty + delta;
             if(next <= 0){
-              cart = cart.filter(x => x.id !== id);
+              cart = cart.filter(x => String(x.id) !== String(id));
             }else if(next <= row.stock){
               row.qty = next;
             }
@@ -3151,7 +3151,7 @@ body.payment-page-open{
           }
 
           function removeItem(id){
-            cart = cart.filter(x => x.id !== id);
+            cart = cart.filter(x => String(x.id) !== String(id));
             renderCart();
           }
 
@@ -3167,7 +3167,7 @@ body.payment-page-open{
                     <div class="cart-product">
                       <div class="cart-thumb">
                         ${(() => {
-                          const p = products.find(p => p.id === x.id);
+                          const p = products.find(p => String(p.id) === String(x.id));
                           return p && p.image
                             ? `<img
                                 src="${esc(productDisplayImage(p))}"
