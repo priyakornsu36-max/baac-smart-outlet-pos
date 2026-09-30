@@ -4660,8 +4660,8 @@ body.payment-page-open{
 
             // Close any open overlays without depending on functions that
             // may not have initialized yet.
-            ['historyModal', 'heldModal', 'proofViewerOverlay',
-             'appDialogOverlay'].forEach(function(id){
+            ['memberModal', 'successModal', 'historyModal', 'heldModal',
+             'proofViewerOverlay', 'appDialogOverlay'].forEach(function(id){
               const el = document.getElementById(id);
               if (el) el.classList.remove('show', 'open', 'active');
             });
