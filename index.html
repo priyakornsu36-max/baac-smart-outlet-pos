@@ -4648,26 +4648,20 @@ body.payment-page-open{
 
         <script>
           function goHome(){
-            // Navigate within the installed POS app. Never open the Apps
-            // Script deployment or reload: that can trigger Google sign-in
-            // and can discard the current unsaved sale.
-            const payment = document.getElementById('paymentPage');
-            if (payment) {
-              payment.classList.remove('show');
-              payment.setAttribute('aria-hidden', 'true');
-            }
-            document.body.classList.remove('payment-page-open');
-
-            // Close any open overlays without depending on functions that
-            // may not have initialized yet.
-            ['memberModal', 'successModal', 'historyModal', 'heldModal',
-             'proofViewerOverlay', 'appDialogOverlay'].forEach(function(id){
-              const el = document.getElementById(id);
-              if (el) el.classList.remove('show', 'open', 'active');
-            });
-            window.scrollTo({top: 0, left: 0, behavior: 'instant'});
-          }
-        </script>
+  // The STAFF home is hosted by Apps Script; this POS is on GitHub Pages.
+  const staffHome = BAAC_API_URL + '?page=index';
+  const hasCart = Array.isArray(cart) && cart.length > 0;
+  let pending = 0;
+  try { pending = typeof getPendingSales === 'function' ? getPendingSales().length : 0; } catch(e) {}
+  if (hasCart || pending > 0) {
+    const message = (hasCart ? 'มีสินค้าอยู่ในตะกร้าที่ยังไม่ชำระเงิน\\n' : '') +
+      (pending ? 'มีรายการขายรอซิงก์ ' + pending + ' รายการ\\n' : '') +
+      'ต้องการกลับหน้าหลัก STAFF หรือไม่? รายการรอซิงก์จะยังอยู่ในเครื่องนี้';
+    if (!window.confirm(message)) return;
+  }
+  window.location.href = staffHome;
+}
+</script>
 
         </body>
         </html>
