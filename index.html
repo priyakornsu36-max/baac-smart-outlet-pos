@@ -4,10 +4,15 @@
           
           <meta charset="UTF-8">
           <meta name="viewport" content="width=device-width,initial-scale=1">
-          <title>BAAC SMART OUTLET - ขายสินค้า</title>
+          <title>BAAC POS</title>
           <link rel="manifest" href="manifest.json">
+          <link rel="icon" type="image/svg+xml" href="./icon.svg">
+          <link rel="apple-touch-icon" sizes="192x192" href="./icon-192.png">
+          <meta name="apple-mobile-web-app-capable" content="yes">
+          <meta name="apple-mobile-web-app-title" content="BAAC POS">
+          <meta name="apple-mobile-web-app-status-bar-style" content="default">
           <meta name="theme-color" content="#007A33">
-          <meta name="baac-build" content="2026-10-01-pos-v7">
+          <meta name="baac-build" content="2026-10-01-pos-v8-icon">
           <style>
 
             /* ===== FC SUBJECT ROUNDED — same as customer/consignor pages ===== */
@@ -1216,7 +1221,7 @@
         const BAAC_API_URL = 'https://script.google.com/macros/s/AKfycbwCS4XlPPlEaZEasQqxCbXFkkom83QF9r86pehdXfq0C2M-bLqNgE5APMBAHOhKTgFmUQ/exec';
 
         if ('serviceWorker' in navigator) {
-          window.addEventListener('load', () => navigator.serviceWorker.register('./sw.js?v=7', { updateViaCache: 'none' }).catch(() => {}));
+          window.addEventListener('load', () => navigator.serviceWorker.register('./sw.js?v=8', { updateViaCache: 'none' }).catch(() => {}));
         }
 
         function baacJsonp(api, params) {

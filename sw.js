@@ -1,9 +1,11 @@
-const CACHE_NAME = 'baac-pos-v7';
+const CACHE_NAME = 'baac-pos-v8';
 
 const APP_FILES = [
   './',
   './index.html',
-  './manifest.json'
+  './manifest.json',
+  './icon.svg',
+  './icon-192.png'
 ];
 
 self.addEventListener('install', event => {
