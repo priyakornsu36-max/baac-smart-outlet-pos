@@ -2135,7 +2135,7 @@ body.payment-page-open{
                 <span id="connectionText">ออนไลน์</span>
               </div>
               <div id="syncBadge" class="sync-badge">รอซิงก์ 0</div>
-              <button class="back" onclick="goHome()">หน้าหลัก</button>
+              <button type="button" class="back" onclick="goHome()">หน้าหลัก</button>
             </div>
           </header>
 
@@ -4648,14 +4648,24 @@ body.payment-page-open{
 
         <script>
           function goHome(){
-            // POS is a standalone PWA. Do not navigate to the Apps Script
-            // deployment: restricted deployments redirect to Google sign-in.
-            // Return to the local sale screen without reloading or losing
-            // the current cart, held bills or pending offline transactions.
-            backToSalePage();
-            closeHistory();
-            closeHeldBills();
-            window.scrollTo(0, 0);
+            // Navigate within the installed POS app. Never open the Apps
+            // Script deployment or reload: that can trigger Google sign-in
+            // and can discard the current unsaved sale.
+            const payment = document.getElementById('paymentPage');
+            if (payment) {
+              payment.classList.remove('show');
+              payment.setAttribute('aria-hidden', 'true');
+            }
+            document.body.classList.remove('payment-page-open');
+
+            // Close any open overlays without depending on functions that
+            // may not have initialized yet.
+            ['historyModal', 'heldModal', 'proofViewerOverlay',
+             'appDialogOverlay'].forEach(function(id){
+              const el = document.getElementById(id);
+              if (el) el.classList.remove('show', 'open', 'active');
+            });
+            window.scrollTo({top: 0, left: 0, behavior: 'instant'});
           }
         </script>
 
