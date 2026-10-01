@@ -1221,7 +1221,7 @@
         const BAAC_API_URL = 'https://script.google.com/macros/s/AKfycbwCS4XlPPlEaZEasQqxCbXFkkom83QF9r86pehdXfq0C2M-bLqNgE5APMBAHOhKTgFmUQ/exec';
 
         if ('serviceWorker' in navigator) {
-          window.addEventListener('load', () => navigator.serviceWorker.register('./sw.js?v=12', { updateViaCache: 'none' }).catch(() => {}));
+          window.addEventListener('load', () => navigator.serviceWorker.register('./sw.js?v=13', { updateViaCache: 'none' }).catch(() => {}));
         }
 
         function baacJsonp(api, params) {
@@ -1370,10 +1370,16 @@
               } catch(e) { fail(e); }
             },
             async cancelBill(saleIds,reason) {
-              try { await baacPost({api:'cancelbill',saleIds:saleIds,reason:reason}); await new Promise(r=>setTimeout(r,900)); ok({success:true}); } catch(e) { fail(e); }
+              try {
+                await baacPost({api:'cancelbill',saleIds:saleIds,reason:reason});
+                fail(new Error('ส่งคำขอยกเลิกแล้ว แต่ยังไม่ได้รับการยืนยันจากเซิร์ฟเวอร์ กรุณาตรวจสอบประวัติการขายก่อนทำรายการซ้ำ'));
+              } catch(e) { fail(e); }
             },
             async voidSale(saleId) {
-              try { await baacPost({api:'cancelbill',saleIds:[saleId],reason:'ยกเลิกรายการ'}); await new Promise(r=>setTimeout(r,900)); ok({success:true}); } catch(e) { fail(e); }
+              try {
+                await baacPost({api:'cancelbill',saleIds:[saleId],reason:'ยกเลิกรายการ'});
+                fail(new Error('ส่งคำขอยกเลิกแล้ว แต่ยังไม่ได้รับการยืนยันจากเซิร์ฟเวอร์ กรุณาตรวจสอบประวัติการขายก่อนทำรายการซ้ำ'));
+              } catch(e) { fail(e); }
             }
           };
           return runner;
@@ -2924,33 +2930,47 @@ body.payment-page-open{
 
 
           function loadProducts(){
-            if(!navigator.onLine){
-              restoreCachedProducts();
+            // แสดงแคชทันทีระหว่างรอข้อมูลล่าสุด ไม่บล็อกหน้าขาย
+            const hasCache = restoreCachedProducts();
+            if(hasCache){
               renderProducts();
               renderCart();
+            }
+            if(!navigator.onLine){
+              if(!hasCache){ renderProducts(); renderCart(); }
+              updateConnectionStatus(true);
               return;
             }
-
             google.script.run
               .withSuccessHandler(function(data){
-                products = data || [];
-                // หักจำนวนในบิลที่เก็บในเครื่องและยังรอซิงก์ ก่อนแสดงสต็อกล่าสุด
+                if(!Array.isArray(data)) {
+                  updateConnectionStatus(true);
+                  showToast('โหลดสินค้าไม่สำเร็จ กรุณาลองใหม่');
+                  return;
+                }
+                // เก็บสต็อกจากเซิร์ฟเวอร์โดยไม่หักบิลรอซิงก์ซ้ำทุกครั้งที่เปิดหน้า
+                try{ localStorage.setItem('baacPosProductsCache', JSON.stringify(data)); }catch(e){}
+                products = data.map(p => Object.assign({}, p));
                 const pendingQty = {};
-                getPendingSales().forEach(function(sale){ (sale.items || []).forEach(function(item){ const id=String(item.id); pendingQty[id]=(pendingQty[id]||0)+Number(item.qty||0); }); });
-                products.forEach(function(p){ const reserved=pendingQty[String(p.id)]||0; if(reserved) p.stock=Math.max(0,Number(p.stock||0)-reserved); });
-                try{
-                  localStorage.setItem('baacPosProductsCache', JSON.stringify(products));
-                }catch(e){}
+                getPendingSales().forEach(sale => (sale.items || []).forEach(item => {
+                  const id = String(item.id);
+                  pendingQty[id] = (pendingQty[id] || 0) + Number(item.qty || 0);
+                }));
+                products.forEach(p => {
+                  const reserved = pendingQty[String(p.id)] || 0;
+                  if(reserved) p.stock = Math.max(0, Number(p.stock || 0) - reserved);
+                });
                 renderProducts();
                 renderCart();
                 hydrateProductImages(products);
                 updateConnectionStatus();
               })
               .withFailureHandler(function(){
-                restoreCachedProducts();
+                if(!hasCache) restoreCachedProducts();
                 renderProducts();
                 renderCart();
                 updateConnectionStatus(true);
+                showToast('เชื่อมต่อข้อมูลสินค้าไม่ได้ กำลังแสดงข้อมูลที่บันทึกไว้');
               })
               .getPosProducts();
           }
