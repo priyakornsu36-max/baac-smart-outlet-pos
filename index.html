@@ -1221,7 +1221,7 @@
         const BAAC_API_URL = 'https://script.google.com/macros/s/AKfycbwCS4XlPPlEaZEasQqxCbXFkkom83QF9r86pehdXfq0C2M-bLqNgE5APMBAHOhKTgFmUQ/exec';
 
         if ('serviceWorker' in navigator) {
-          window.addEventListener('load', () => navigator.serviceWorker.register('./sw.js?v=14', { updateViaCache: 'none' }).catch(() => {}));
+          window.addEventListener('load', () => navigator.serviceWorker.register('./sw.js?v=15', { updateViaCache: 'none' }).catch(() => {}));
         }
 
         function baacJsonp(api, params) {
@@ -1372,13 +1372,27 @@
             async cancelBill(saleIds,reason) {
               try {
                 await baacPost({api:'cancelbill',saleIds:saleIds,reason:reason});
-                fail(new Error('ส่งคำขอยกเลิกแล้ว แต่ยังไม่ได้รับการยืนยันจากเซิร์ฟเวอร์ กรุณาตรวจสอบประวัติการขายก่อนทำรายการซ้ำ'));
+                let confirmed=false;
+                for(let i=0;i<20;i++){
+                  const x=await baacJsonp('salestatus',{ids:(saleIds||[]).join(',')});
+                  if(x && x.success && x.confirmed===true){ confirmed=true; break; }
+                  await new Promise(r=>setTimeout(r,500));
+                }
+                if(!confirmed) throw new Error('ยังยืนยันการยกเลิกบิลจากเซิร์ฟเวอร์ไม่ได้ กรุณาตรวจสอบประวัติการขาย');
+                ok({success:true,cancelled:(saleIds||[]).length});
               } catch(e) { fail(e); }
             },
             async voidSale(saleId) {
               try {
                 await baacPost({api:'cancelbill',saleIds:[saleId],reason:'ยกเลิกรายการ'});
-                fail(new Error('ส่งคำขอยกเลิกแล้ว แต่ยังไม่ได้รับการยืนยันจากเซิร์ฟเวอร์ กรุณาตรวจสอบประวัติการขายก่อนทำรายการซ้ำ'));
+                let confirmed=false;
+                for(let i=0;i<20;i++){
+                  const x=await baacJsonp('salestatus',{ids:String(saleId||'')});
+                  if(x && x.success && x.confirmed===true){ confirmed=true; break; }
+                  await new Promise(r=>setTimeout(r,500));
+                }
+                if(!confirmed) throw new Error('ยังยืนยันการยกเลิกรายการจากเซิร์ฟเวอร์ไม่ได้ กรุณาตรวจสอบประวัติการขาย');
+                ok({success:true,cancelled:1});
               } catch(e) { fail(e); }
             }
           };
