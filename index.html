@@ -1229,7 +1229,7 @@
         });
 
         if ('serviceWorker' in navigator) {
-          window.addEventListener('load', () => navigator.serviceWorker.register('./sw.js?v=17', { updateViaCache: 'none' }).catch(() => {}));
+          window.addEventListener('load', () => navigator.serviceWorker.register('./sw.js?v=18', { updateViaCache: 'none' }).catch(() => {}));
         }
 
         function baacJsonp(api, params) {
@@ -3137,6 +3137,15 @@ body.payment-page-open{
               const category = String((p && p.category) || '').trim();
               return selectedCategory === 'ทั้งหมด' || category === selectedCategory;
             }).sort(function(a, b){
+              const stockA = Number((a && a.stock) || 0);
+              const stockB = Number((b && b.stock) || 0);
+              const outA = stockA <= 0 ? 1 : 0;
+              const outB = stockB <= 0 ? 1 : 0;
+
+              // สินค้าที่มีสต็อกอยู่ด้านบน สินค้าหมดทั้งหมดอยู่ด้านล่าง
+              if(outA !== outB) return outA - outB;
+
+              // ภายในแต่ละกลุ่มเรียงราคาน้อยไปมาก
               const priceA = Number(String((a && a.price) || 0).replace(/,/g, '')) || 0;
               const priceB = Number(String((b && b.price) || 0).replace(/,/g, '')) || 0;
               return priceA - priceB;
