@@ -1229,7 +1229,7 @@
         });
 
         if ('serviceWorker' in navigator) {
-          window.addEventListener('load', () => navigator.serviceWorker.register('./sw.js?v=18', { updateViaCache: 'none' }).catch(() => {}));
+          window.addEventListener('load', () => navigator.serviceWorker.register('./sw.js?v=19', { updateViaCache: 'none' }).catch(() => {}));
         }
 
         function baacJsonp(api, params) {
@@ -2147,6 +2147,34 @@ body.payment-page-open{
     overflow:visible;
   }
 }
+
+        /* ===== PRODUCT CARD STOCK FIT FIX v19 =====
+           ให้ข้อความคงเหลืออยู่ภายในการ์ดเสมอ โดยไม่กระทบการเรียงสินค้า/การขาย ===== */
+        @media (min-width:700px){
+          .product{
+            height:auto !important;
+            min-height:250px !important;
+            display:flex !important;
+            flex-direction:column !important;
+            align-items:stretch !important;
+            overflow:hidden !important;
+          }
+          .product-image{
+            flex:0 0 118px !important;
+          }
+          .pname{
+            flex:0 0 auto !important;
+          }
+          .pprice{
+            flex:0 0 auto !important;
+          }
+          .pstock{
+            flex:0 0 auto !important;
+            margin-top:auto !important;
+            padding-top:4px !important;
+            line-height:1.15 !important;
+          }
+        }
 </style>
 
 </head>
