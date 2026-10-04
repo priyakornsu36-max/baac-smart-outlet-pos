@@ -1,8 +1,9 @@
-const CACHE_NAME = 'baac-pos-v19';
+const CACHE_NAME = 'baac-pos-v20';
 
 const APP_FILES = [
   './',
   './index.html',
+  './home.html',
   './manifest.json',
   './icon.svg',
   './icon-192.png'
