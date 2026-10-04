@@ -1229,7 +1229,7 @@
         });
 
         if ('serviceWorker' in navigator) {
-          window.addEventListener('load', () => navigator.serviceWorker.register('./sw.js?v=16', { updateViaCache: 'none' }).catch(() => {}));
+          window.addEventListener('load', () => navigator.serviceWorker.register('./sw.js?v=17', { updateViaCache: 'none' }).catch(() => {}));
         }
 
         function baacJsonp(api, params) {
@@ -3136,6 +3136,10 @@ body.payment-page-open{
             const list = (Array.isArray(products) ? products : []).filter(function(p){
               const category = String((p && p.category) || '').trim();
               return selectedCategory === 'ทั้งหมด' || category === selectedCategory;
+            }).sort(function(a, b){
+              const priceA = Number(String((a && a.price) || 0).replace(/,/g, '')) || 0;
+              const priceB = Number(String((b && b.price) || 0).replace(/,/g, '')) || 0;
+              return priceA - priceB;
             });
 
             box.innerHTML = list.map(function(p){
