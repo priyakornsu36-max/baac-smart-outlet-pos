@@ -12,7 +12,7 @@
           <meta name="apple-mobile-web-app-title" content="BAAC POS">
           <meta name="apple-mobile-web-app-status-bar-style" content="default">
           <meta name="theme-color" content="#007A33">
-          <meta name="baac-build" content="2026-10-01-pos-v9-local-home">
+          <meta name="baac-build" content="2026-10-04-pos-v10-page-resume">
           <style>
 
             /* ===== FC SUBJECT ROUNDED — same as customer/consignor pages ===== */
@@ -1219,6 +1219,14 @@
 
         <script>
         const BAAC_API_URL = 'https://script.google.com/macros/s/AKfycbwCS4XlPPlEaZEasQqxCbXFkkom83QF9r86pehdXfq0C2M-bLqNgE5APMBAHOhKTgFmUQ/exec';
+
+        // iPad/Safari may restore this POS from back-forward cache without
+        // running the normal startup flow again. Refresh only that restored copy.
+        window.addEventListener('pageshow', (event) => {
+          if (event && event.persisted) {
+            window.location.reload();
+          }
+        });
 
         if ('serviceWorker' in navigator) {
           window.addEventListener('load', () => navigator.serviceWorker.register('./sw.js?v=16', { updateViaCache: 'none' }).catch(() => {}));
