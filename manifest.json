@@ -1,12 +1,13 @@
 {
+  "id": "./app.html",
   "name": "BAAC POS",
   "short_name": "BAAC POS",
   "description": "BAAC POS ระบบขายสินค้าสำหรับพนักงาน",
-  "start_url": "./",
+  "start_url": "./app.html",
   "scope": "./",
   "display": "standalone",
   "background_color": "#F4F8F4",
-  "theme_color": "#0d5632",
+  "theme_color": "#007A33",
   "lang": "th",
   "icons": [
     {
