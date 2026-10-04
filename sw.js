@@ -1,7 +1,8 @@
-const CACHE_NAME = 'baac-pos-v23';
+const CACHE_NAME = 'baac-pos-v24';
 
 const APP_FILES = [
   './',
+  './app.html',
   './index.html',
   './home.html',
   './manifest.json',
@@ -22,9 +23,7 @@ self.addEventListener('activate', event => {
     Promise.all([
       caches.keys().then(keys =>
         Promise.all(
-          keys
-            .filter(key => key !== CACHE_NAME)
-            .map(key => caches.delete(key))
+          keys.filter(key => key !== CACHE_NAME).map(key => caches.delete(key))
         )
       ),
       self.clients.claim()
@@ -35,45 +34,33 @@ self.addEventListener('activate', event => {
 self.addEventListener('fetch', event => {
   if (event.request.method !== 'GET') return;
 
-  // หน้า POS ใช้เวอร์ชันล่าสุดจากอินเทอร์เน็ตก่อน
-  // หาก Offline จึงย้อนกลับไปใช้ Cache
   if (event.request.mode === 'navigate') {
     event.respondWith(
       fetch(event.request)
         .then(response => {
-          const copy = response.clone();
-
-          caches.open(CACHE_NAME)
-            .then(cache => cache.put(event.request, copy));
-
+          if (response && response.ok) {
+            const copy = response.clone();
+            caches.open(CACHE_NAME).then(cache => cache.put(event.request, copy));
+          }
           return response;
         })
         .catch(() =>
-          caches.match(event.request)
-            .then(cached => cached || caches.match('./index.html'))
+          caches.match(event.request).then(cached => cached || caches.match('./index.html'))
         )
     );
-
     return;
   }
 
-  // ไฟล์อื่นใช้ Cache ก่อน
   event.respondWith(
-    caches.match(event.request)
-      .then(cached => {
-        if (cached) return cached;
-
-        return fetch(event.request)
-          .then(response => {
-            if (response && response.status === 200) {
-              const copy = response.clone();
-
-              caches.open(CACHE_NAME)
-                .then(cache => cache.put(event.request, copy));
-            }
-
-            return response;
-          });
-      })
+    caches.match(event.request).then(cached => {
+      if (cached) return cached;
+      return fetch(event.request).then(response => {
+        if (response && response.ok && new URL(event.request.url).origin === self.location.origin) {
+          const copy = response.clone();
+          caches.open(CACHE_NAME).then(cache => cache.put(event.request, copy));
+        }
+        return response;
+      });
+    })
   );
 });
