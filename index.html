@@ -1229,7 +1229,7 @@
         });
 
         if ('serviceWorker' in navigator) {
-          window.addEventListener('load', () => navigator.serviceWorker.register('./sw.js?v=27', { updateViaCache: 'none' }).catch(() => {}));
+          window.addEventListener('load', () => navigator.serviceWorker.register('./sw.js?v=28', { updateViaCache: 'none' }).catch(() => {}));
         }
 
         function baacJsonp(api, params) {
@@ -4736,7 +4736,7 @@ body.payment-page-open{
         <script>
           function goHome(){
   // The STAFF home is hosted by Apps Script; this POS is on GitHub Pages.
-  const staffHome = './home.html?v=27';
+  const staffHome = './home.html?v=28';
   const hasCart = Array.isArray(cart) && cart.length > 0;
   let pending = 0;
   try { pending = typeof getPendingSales === 'function' ? getPendingSales().length : 0; } catch(e) {}
