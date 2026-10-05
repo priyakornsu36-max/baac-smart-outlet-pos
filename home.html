@@ -723,15 +723,19 @@ html, body, body *, button, input, select, textarea { font-family: 'FC Subject R
                         const REQUESTED_PAGE = '';
 
                         function openPage(page) {
+                          var localPages = {
+                            stock: 'stock',
+                            members: 'members',
+                            consignors: 'consignors',
+                            payments: 'payments',
+                            summary: 'summary'
+                          };
+
                           var targetUrl = page === 'pos'
                             ? POS_URL
-                            : APP_URL + '?page=' + encodeURIComponent(page);
+                            : './module.html?page=' + encodeURIComponent(localPages[page] || page);
 
-                          try {
-                            window.top.location.href = targetUrl;
-                          } catch (e) {
-                            window.open(targetUrl, '_top');
-                          }
+                          window.location.href = targetUrl;
                         }
 
                         function showNotice(text) {
