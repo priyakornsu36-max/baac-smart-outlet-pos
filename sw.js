@@ -1,4 +1,4 @@
-const CACHE_NAME = 'baac-pos-v26';
+const CACHE_NAME = 'baac-pos-v27';
 
 const APP_FILES = [
   './',
