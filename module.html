@@ -12,10 +12,9 @@
   <style>
     html,body{margin:0;width:100%;height:100%;overflow:hidden;background:#f4f8f4}
     .shell{position:fixed;inset:0;background:#f4f8f4;overflow:hidden}
-    .frame-wrap{position:absolute;inset:0;overflow:hidden;background:#fff}
+    .frame-wrap{position:absolute;left:0;right:0;top:48px;bottom:0;overflow:hidden;background:#fff}
     iframe{position:absolute;left:0;top:-52px;width:100%;height:calc(100% + 52px);border:0;background:#fff}
     .loading{position:absolute;inset:0;display:grid;place-items:center;font:600 18px system-ui,sans-serif;color:#0d5632;background:#f4f8f4;z-index:2}
-    .home-btn{position:fixed;right:max(18px,env(safe-area-inset-right));top:max(14px,env(safe-area-inset-top));z-index:99999;border:0;border-radius:16px;background:#087a3e;color:#fff;font:700 18px system-ui,sans-serif;padding:12px 20px;box-shadow:0 6px 18px rgba(0,0,0,.24);-webkit-tap-highlight-color:transparent}
   </style>
 </head>
 <body>
@@ -23,7 +22,6 @@
     <div class="loading" id="loading">กำลังเปิดข้อมูล...</div>
     <div class="frame-wrap">
       <iframe id="staffFrame" title="BAAC SMART OUTLET" sandbox="allow-scripts allow-forms allow-modals allow-popups allow-same-origin allow-downloads" allow="clipboard-read; clipboard-write"></iframe>
-      <button class="home-btn" type="button" onclick="goHome()">⌂ หน้าหลัก</button>
     </div>
   </div>
 <script>
@@ -31,7 +29,6 @@
   const allowed=new Set(['stock','members','consignors','payments','summary']);
   const page=new URLSearchParams(location.search).get('page') || 'stock';
   const target=allowed.has(page)?page:'stock';
-  function goHome(){ location.replace('./home.html?v=27'); }
   const frame=document.getElementById('staffFrame');
   frame.src=APP_URL+'?page='+encodeURIComponent(target)+'&embed=1';
   frame.addEventListener('load',()=>{document.getElementById('loading').style.display='none'});
