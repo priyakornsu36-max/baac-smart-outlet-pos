@@ -13,8 +13,9 @@
     html,body{margin:0;width:100%;height:100%;overflow:hidden;background:#f4f8f4}
     .shell{position:fixed;inset:0;background:#f4f8f4;overflow:hidden}
     .frame-wrap{position:absolute;inset:0;overflow:hidden;background:#fff}
-    iframe{position:absolute;left:0;top:-64px;width:100%;height:calc(100% + 64px);border:0;background:#fff}
+    iframe{position:absolute;left:0;top:-112px;width:100%;height:calc(100% + 112px);border:0;background:#fff}
     .loading{position:absolute;inset:0;display:grid;place-items:center;font:600 18px system-ui,sans-serif;color:#0d5632;background:#f4f8f4;z-index:2}
+    .native-home-hit{position:fixed;top:6px;right:12px;width:118px;height:52px;z-index:99999;border:0;background:transparent;padding:0;margin:0;-webkit-tap-highlight-color:transparent}
   </style>
 </head>
 <body>
@@ -22,6 +23,7 @@
     <div class="loading" id="loading">กำลังเปิดข้อมูล...</div>
     <div class="frame-wrap">
       <iframe id="staffFrame" title="BAAC SMART OUTLET" sandbox="allow-scripts allow-forms allow-modals allow-popups allow-same-origin allow-downloads" allow="clipboard-read; clipboard-write"></iframe>
+      <button class="native-home-hit" type="button" aria-label="หน้าหลัก" onclick="location.replace('./home.html?v=30')"></button>
     </div>
   </div>
 <script>
