@@ -1,0 +1,37 @@
+<!DOCTYPE html>
+<html lang="th">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+  <meta name="apple-mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-title" content="BAAC POS">
+  <meta name="theme-color" content="#0d5632">
+  <link rel="manifest" href="./manifest.json">
+  <link rel="apple-touch-icon" href="./icon-192.png">
+  <title>BAAC POS</title>
+  <style>
+    html,body{margin:0;width:100%;height:100%;overflow:hidden;background:#f4f8f4}
+    .shell{position:fixed;inset:0;background:#f4f8f4;overflow:hidden}
+    .frame-wrap{position:absolute;inset:0;overflow:hidden;background:#fff}
+    iframe{position:absolute;left:0;top:-52px;width:100%;height:calc(100% + 52px);border:0;background:#fff}
+    .loading{position:absolute;inset:0;display:grid;place-items:center;font:600 18px system-ui,sans-serif;color:#0d5632;background:#f4f8f4;z-index:2}
+  </style>
+</head>
+<body>
+  <div class="shell">
+    <div class="loading" id="loading">กำลังเปิดข้อมูล...</div>
+    <div class="frame-wrap">
+      <iframe id="staffFrame" title="BAAC SMART OUTLET" allow="clipboard-read; clipboard-write"></iframe>
+    </div>
+  </div>
+<script>
+  const APP_URL='https://script.google.com/macros/s/AKfycbwCS4XlPPlEaZEasQqxCbXFkkom83QF9r86pehdXfq0C2M-bLqNgE5APMBAHOhKTgFmUQ/exec';
+  const allowed=new Set(['stock','members','consignors','payments','summary']);
+  const page=new URLSearchParams(location.search).get('page') || 'stock';
+  const target=allowed.has(page)?page:'stock';
+  const frame=document.getElementById('staffFrame');
+  frame.src=APP_URL+'?page='+encodeURIComponent(target)+'&embed=1';
+  frame.addEventListener('load',()=>{document.getElementById('loading').style.display='none'});
+</script>
+</body>
+</html>
