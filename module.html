@@ -12,18 +12,24 @@
   <style>
     html,body{margin:0;width:100%;height:100%;overflow:hidden;background:#f4f8f4}
     .shell{position:fixed;inset:0;background:#f4f8f4;overflow:hidden}
-    .frame-wrap{position:absolute;inset:0;overflow:hidden;background:#fff}
-    iframe{position:absolute;left:0;top:-64px;width:100%;height:calc(100% + 64px);border:0;background:#fff}
+    .frame-wrap{position:absolute;left:0;right:0;top:64px;bottom:0;overflow:hidden;background:#fff}
+    iframe{position:absolute;left:0;top:-112px;width:100%;height:calc(100% + 112px);border:0;background:#fff}
     .loading{position:absolute;inset:0;display:grid;place-items:center;font:600 18px system-ui,sans-serif;color:#0d5632;background:#f4f8f4;z-index:2}
-    .native-home-hit{position:fixed;top:6px;right:12px;width:118px;height:52px;z-index:99999;border:0;background:transparent;padding:0;margin:0;-webkit-tap-highlight-color:transparent}
+    .app-topbar{position:fixed;left:0;right:0;top:0;height:64px;z-index:99999;background:#08783f;color:#fff;padding:10px 18px;box-sizing:border-box;box-shadow:0 5px 18px rgba(0,0,0,.14);display:flex;align-items:center;justify-content:space-between;gap:16px;font-family:'FC Subject Rounded','Tahoma',sans-serif}
+    .app-brand{font-size:25px;font-weight:700;line-height:1}
+    .app-sub{font-size:15px;opacity:.92;margin-top:3px}
+    .app-home{border:0;border-radius:16px;background:#fff;color:#08783f;padding:9px 18px;font:700 18px 'FC Subject Rounded','Tahoma',sans-serif;cursor:pointer;box-shadow:0 4px 0 #cddbd2;-webkit-tap-highlight-color:transparent}
   </style>
 </head>
 <body>
   <div class="shell">
+    <header class="app-topbar">
+      <div><div class="app-brand">BAAC SMART OUTLET</div><div class="app-sub">ระบบบริหารร้านฝากขายอัจฉริยะ</div></div>
+      <button class="app-home" type="button" onclick="location.replace('./home.html?v=32')">หน้าหลัก</button>
+    </header>
     <div class="loading" id="loading">กำลังเปิดข้อมูล...</div>
     <div class="frame-wrap">
       <iframe id="staffFrame" title="BAAC SMART OUTLET" sandbox="allow-scripts allow-forms allow-modals allow-popups allow-same-origin allow-downloads" allow="clipboard-read; clipboard-write"></iframe>
-      <button class="native-home-hit" type="button" aria-label="หน้าหลัก" onclick="location.replace('./home.html?v=31')"></button>
     </div>
   </div>
 <script>
