@@ -1,10 +1,11 @@
-const CACHE_NAME = 'baac-pos-v24';
+const CACHE_NAME = 'baac-pos-v25';
 
 const APP_FILES = [
   './',
   './app.html',
   './index.html',
   './home.html',
+  './module.html',
   './manifest.json',
   './icon.svg',
   './icon-192.png'
@@ -45,7 +46,7 @@ self.addEventListener('fetch', event => {
           return response;
         })
         .catch(() =>
-          caches.match(event.request).then(cached => cached || caches.match('./index.html'))
+          caches.match(event.request, { ignoreSearch: true }).then(cached => cached || caches.match('./index.html'))
         )
     );
     return;
