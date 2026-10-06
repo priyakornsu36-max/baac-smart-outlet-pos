@@ -2901,12 +2901,9 @@ body.payment-page-open{
 
 
           function saveCachedProductImage(raw, dataUrl){
-            const key = productImageCacheKey(raw);
-            if(!key || !dataUrl) return;
-
-            try{
-              localStorage.setItem(key, dataUrl);
-            }catch(e){}
+            // รูปสินค้า/หลักฐานไม่เก็บเป็น base64 ใน localStorage อีกต่อไป
+            // เพื่อสงวนพื้นที่ localStorage ไว้ให้คิวบิลและข้อมูลสำคัญเท่านั้น
+            return;
           }
 
 
