@@ -2571,6 +2571,8 @@ body.payment-page-open{
           const productImageLoadState = {};
 
           document.addEventListener('DOMContentLoaded', function(){
+            // เคลียร์แคชรูปแบบเก่าที่เคยกิน localStorage จนบันทึกบิลไม่ได้
+            clearLegacyPosImageStorage();
             restoreCachedProducts();
             loadProducts();
             refreshMemberCache();
@@ -3485,7 +3487,7 @@ body.payment-page-open{
 
                 img.onload = function(){
                   try{
-                    const maxSide = 1400;
+                    const maxSide = 1200;
                     let width = img.naturalWidth || img.width;
                     let height = img.naturalHeight || img.height;
 
@@ -3504,9 +3506,16 @@ body.payment-page-open{
                     ctx.fillRect(0,0,width,height);
                     ctx.drawImage(img,0,0,width,height);
 
-                    const dataUrl = canvas.toDataURL('image/jpeg',0.78);
+                    let quality = 0.72;
+                    let dataUrl = canvas.toDataURL('image/jpeg', quality);
 
-                    if(dataUrl.length > 2.4 * 1024 * 1024){
+                    // จำกัดขนาดหลักฐานให้เหมาะกับ iPad/Android และการซิงก์ระยะยาว
+                    while(dataUrl.length > 900 * 1024 && quality > 0.44){
+                      quality -= 0.08;
+                      dataUrl = canvas.toDataURL('image/jpeg', quality);
+                    }
+
+                    if(dataUrl.length > 1100 * 1024){
                       reject(new Error('รูปสลิปมีขนาดใหญ่เกินไป กรุณาถ่ายใหม่ให้เห็นเฉพาะสลิป'));
                       return;
                     }
@@ -3779,6 +3788,96 @@ body.payment-page-open{
               Math.random().toString(36).slice(2,8).toUpperCase();
           }
 
+          function clearLegacyPosImageStorage(){
+            try{
+              const keys = [];
+              for(let i=0;i<localStorage.length;i++){
+                const key = localStorage.key(i);
+                if(key && key.indexOf('baacPosProductImage_') === 0) keys.push(key);
+              }
+              keys.forEach(function(key){ localStorage.removeItem(key); });
+
+              const rawProducts = localStorage.getItem('baacPosProductsCache');
+              if(rawProducts){
+                const cachedProducts = JSON.parse(rawProducts);
+                if(Array.isArray(cachedProducts)){
+                  const slim = cachedProducts.map(function(p){
+                    const copy = Object.assign({}, p);
+                    delete copy._imageData;
+                    return copy;
+                  });
+                  localStorage.setItem('baacPosProductsCache', JSON.stringify(slim));
+                }
+              }
+            }catch(e){}
+          }
+
+          function openBaacProofDb(){
+            return new Promise(function(resolve,reject){
+              if(!window.indexedDB){
+                reject(new Error('อุปกรณ์นี้ไม่รองรับพื้นที่เก็บหลักฐานแบบปลอดภัย'));
+                return;
+              }
+              const request = indexedDB.open('baacPosOfflineDb', 1);
+              request.onupgradeneeded = function(){
+                const db = request.result;
+                if(!db.objectStoreNames.contains('proofs')){
+                  db.createObjectStore('proofs');
+                }
+              };
+              request.onsuccess = function(){ resolve(request.result); };
+              request.onerror = function(){ reject(request.error || new Error('เปิดพื้นที่เก็บหลักฐานไม่สำเร็จ')); };
+            });
+          }
+
+          async function savePendingProof(clientTransactionId, dataUrl){
+            if(!dataUrl) return false;
+            const db = await openBaacProofDb();
+            try{
+              await new Promise(function(resolve,reject){
+                const tx = db.transaction('proofs','readwrite');
+                tx.objectStore('proofs').put(dataUrl, clientTransactionId);
+                tx.oncomplete = function(){ resolve(); };
+                tx.onerror = function(){ reject(tx.error || new Error('บันทึกหลักฐานไม่สำเร็จ')); };
+                tx.onabort = function(){ reject(tx.error || new Error('บันทึกหลักฐานไม่สำเร็จ')); };
+              });
+              return true;
+            }finally{
+              db.close();
+            }
+          }
+
+          async function getPendingProof(clientTransactionId){
+            const db = await openBaacProofDb();
+            try{
+              return await new Promise(function(resolve,reject){
+                const tx = db.transaction('proofs','readonly');
+                const request = tx.objectStore('proofs').get(clientTransactionId);
+                request.onsuccess = function(){ resolve(request.result || ''); };
+                request.onerror = function(){ reject(request.error || new Error('อ่านหลักฐานไม่สำเร็จ')); };
+              });
+            }finally{
+              db.close();
+            }
+          }
+
+          async function deletePendingProof(clientTransactionId){
+            try{
+              const db = await openBaacProofDb();
+              try{
+                await new Promise(function(resolve,reject){
+                  const tx = db.transaction('proofs','readwrite');
+                  tx.objectStore('proofs').delete(clientTransactionId);
+                  tx.oncomplete = function(){ resolve(); };
+                  tx.onerror = function(){ reject(tx.error || new Error('ลบหลักฐานไม่สำเร็จ')); };
+                  tx.onabort = function(){ reject(tx.error || new Error('ลบหลักฐานไม่สำเร็จ')); };
+                });
+              }finally{
+                db.close();
+              }
+            }catch(e){}
+          }
+
           function getPendingSales(){
             try{
               const rows = JSON.parse(localStorage.getItem('baacPendingSales') || '[]');
@@ -3789,7 +3888,14 @@ body.payment-page-open{
           }
 
           function savePendingSales(rows){
-            localStorage.setItem('baacPendingSales', JSON.stringify(rows || []));
+            const value = JSON.stringify(rows || []);
+            try{
+              localStorage.setItem('baacPendingSales', value);
+            }catch(firstError){
+              // ล้างเฉพาะแคชรูปที่สร้างใหม่ได้เสมอ แล้วลองบันทึกบิลอีกครั้ง
+              clearLegacyPosImageStorage();
+              localStorage.setItem('baacPendingSales', value);
+            }
             updatePendingBadge();
           }
 
@@ -3816,27 +3922,49 @@ body.payment-page-open{
               if(p) p.stock = Math.max(Number(p.stock || 0) - Number(item.qty || 0), 0);
             });
             try{
-              localStorage.setItem('baacPosProductsCache', JSON.stringify(products));
+              const slimProducts = products.map(function(p){
+                const copy = Object.assign({}, p);
+                delete copy._imageData;
+                return copy;
+              });
+              localStorage.setItem('baacPosProductsCache', JSON.stringify(slimProducts));
             }catch(e){}
             renderProducts();
           }
 
-          function queueSaleOffline(payload){
+          async function queueSaleOffline(payload){
             const pending = getPendingSales();
-            if(!pending.some(x => x.clientTransactionId === payload.clientTransactionId)){
-              pending.push(payload);
-              savePendingSales(pending);
-              reserveOfflineStock(payload.items || []);
-              return true;
+            if(pending.some(x => x.clientTransactionId === payload.clientTransactionId)){
+              return false;
             }
-            return false;
+
+            const queuePayload = Object.assign({}, payload);
+            const proofDataUrl = queuePayload.proofDataUrl || '';
+
+            if(proofDataUrl){
+              await savePendingProof(queuePayload.clientTransactionId, proofDataUrl);
+              queuePayload.proofDataUrl = '';
+              queuePayload.proofStoredInIdb = true;
+            }
+
+            try{
+              pending.push(queuePayload);
+              savePendingSales(pending);
+            }catch(e){
+              if(proofDataUrl) await deletePendingProof(queuePayload.clientTransactionId);
+              throw e;
+            }
+
+            reserveOfflineStock(queuePayload.items || []);
+            return true;
           }
 
-          function removePendingSale(clientTransactionId){
+          async function removePendingSale(clientTransactionId){
             const latest = getPendingSales().filter(function(x){
               return x.clientTransactionId !== clientTransactionId;
             });
             savePendingSales(latest);
+            await deletePendingProof(clientTransactionId);
             return latest;
           }
 
@@ -4104,7 +4232,7 @@ body.payment-page-open{
                การส่ง Google Sheets ทำต่อเบื้องหลังผ่านคิวเดิม จึงไม่ต้องรอ Apps Script ยืนยันก่อนเห็นเงินทอน */
             // ยืนยันว่าเก็บบิลลงเครื่องสำเร็จก่อนแสดงหน้าชำระสำเร็จ
             try{
-              if(!queueSaleOffline(payload)){
+              if(!await queueSaleOffline(payload)){
                 showAppAlert('บิลนี้มีรหัสธุรกรรมซ้ำ กรุณาตรวจสอบบิลรอซิงก์ก่อน','ยังไม่บันทึกบิล','error'); return;
               }
             }catch(storageError){
@@ -4140,8 +4268,17 @@ body.payment-page-open{
               }
             }catch(e){}
 
+            const sendItem = Object.assign({}, item);
+            if(sendItem.proofStoredInIdb && !sendItem.proofDataUrl){
+              sendItem.proofDataUrl = await getPendingProof(sendItem.clientTransactionId);
+              if(sendItem.paymentMethod === 'พร้อมเพย์' && !sendItem.proofDataUrl){
+                throw new Error('ไม่พบหลักฐานการโอนเงินของบิลรอซิงก์');
+              }
+            }
+            delete sendItem.proofStoredInIdb;
+
             /* 2) ถ้ายังไม่มี จึงส่ง */
-            await baacPost(Object.assign({api:'checkout'}, item));
+            await baacPost(Object.assign({api:'checkout'}, sendItem));
 
             /* 3) ห้ามถือว่าสำเร็จจนกว่าเซิร์ฟเวอร์ยืนยัน transaction เดิม */
             return await baacWaitTx(item.clientTransactionId);
@@ -4164,7 +4301,7 @@ body.payment-page-open{
 
                 try{
                   await syncOnePendingSale(item);
-                  removePendingSale(item.clientTransactionId);
+                  await removePendingSale(item.clientTransactionId);
                 }catch(err){
                   /* เก็บบิลไว้ หยุดรอบนี้ แล้วลองใหม่เมื่อออนไลน์/รอบถัดไป */
                   updatePendingBadge();
