@@ -3939,9 +3939,16 @@ body.payment-page-open{
             const proofDataUrl = queuePayload.proofDataUrl || '';
 
             if(proofDataUrl){
-              await savePendingProof(queuePayload.clientTransactionId, proofDataUrl);
-              queuePayload.proofDataUrl = '';
-              queuePayload.proofStoredInIdb = true;
+              try{
+                await savePendingProof(queuePayload.clientTransactionId, proofDataUrl);
+                queuePayload.proofDataUrl = '';
+                queuePayload.proofStoredInIdb = true;
+              }catch(idbError){
+                // อุปกรณ์เก่าหรือโหมดที่ IndexedDB ใช้ไม่ได้: ยังบันทึกบิลได้ด้วย fallback
+                clearLegacyPosImageStorage();
+                queuePayload.proofDataUrl = proofDataUrl;
+                queuePayload.proofStoredInIdb = false;
+              }
             }
 
             try{
