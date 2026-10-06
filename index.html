@@ -2999,8 +2999,21 @@ body.payment-page-open{
                   showToast('โหลดสินค้าไม่สำเร็จ กรุณาลองใหม่');
                   return;
                 }
-                // เก็บสต็อกจากเซิร์ฟเวอร์โดยไม่หักบิลรอซิงก์ซ้ำทุกครั้งที่เปิดหน้า
-                try{ localStorage.setItem('baacPosProductsCache', JSON.stringify(data)); }catch(e){}
+                // เก็บเฉพาะข้อมูลสินค้าที่จำเป็น ห้ามเก็บรูป base64 ลง localStorage เพราะทำให้พื้นที่เต็มบน iPad
+                try{
+                  const slimCache = data.map(function(p){
+                    const copy = Object.assign({}, p);
+                    delete copy._imageData;
+                    delete copy.imageData;
+                    delete copy.imageBase64;
+                    delete copy.base64;
+                    return copy;
+                  });
+                  localStorage.setItem('baacPosProductsCache', JSON.stringify(slimCache));
+                }catch(e){
+                  // แคชสินค้าเป็นข้อมูลเสริมเท่านั้น ถ้าพื้นที่ไม่พอให้ลบทิ้งโดยไม่กระทบการขาย
+                  try{ localStorage.removeItem('baacPosProductsCache'); }catch(x){}
+                }
                 products = data.map(p => Object.assign({}, p));
                 const pendingQty = {};
                 getPendingSales().forEach(sale => (sale.items || []).forEach(item => {
@@ -3884,13 +3897,20 @@ body.payment-page-open{
             }
           }
 
+          function freeSpaceForPendingSales(){
+            // ข้อมูลเหล่านี้สร้างใหม่จากเซิร์ฟเวอร์ได้ทั้งหมด จึงลบได้อย่างปลอดภัยเมื่อพื้นที่ใกล้เต็ม
+            clearLegacyPosImageStorage();
+            try{ localStorage.removeItem('baacPosProductsCache'); }catch(e){}
+            try{ localStorage.removeItem('baacMemberCache'); }catch(e){}
+          }
+
           function savePendingSales(rows){
             const value = JSON.stringify(rows || []);
             try{
               localStorage.setItem('baacPendingSales', value);
             }catch(firstError){
-              // ล้างเฉพาะแคชรูปที่สร้างใหม่ได้เสมอ แล้วลองบันทึกบิลอีกครั้ง
-              clearLegacyPosImageStorage();
+              // ให้บิลรอซิงก์มีความสำคัญสูงสุด: ล้างเฉพาะ cache ที่โหลดใหม่ได้ แล้วลองอีกครั้ง
+              freeSpaceForPendingSales();
               localStorage.setItem('baacPendingSales', value);
             }
             updatePendingBadge();
