@@ -4082,54 +4082,121 @@ body.payment-page-open{
             }
           }
 
-          function playOneBaacVoice(key){
+          let baacVoiceSequenceId = 0;
+          let baacCurrentAudio = null;
+
+          function stopBaacCheckoutVoice(){
+            baacVoiceSequenceId++;
+            if(baacCurrentAudio){
+              try{ baacCurrentAudio.pause(); baacCurrentAudio.currentTime = 0; }catch(e){}
+              baacCurrentAudio = null;
+            }
+            if('speechSynthesis' in window){
+              try{ window.speechSynthesis.cancel(); }catch(e){}
+            }
+          }
+
+          function playOneBaacVoice(key, sequenceId){
             return new Promise(resolve => {
+              if(sequenceId !== baacVoiceSequenceId){ resolve(); return; }
               const src = BAAC_VOICE[key];
               if(!src){ resolve(); return; }
               try{
-                // สร้าง element ใหม่ทุกคำ ป้องกัน state ค้างจากการปลดล็อก/การเล่นครั้งก่อน
                 const audio = new Audio(src);
+                baacCurrentAudio = audio;
                 audio.preload = 'auto';
                 audio.volume = 1;
-                // เร็วระดับปานกลาง: ชัดเจนขึ้นโดยไม่เร่งจนฟังยาก
-                audio.playbackRate = 1.18;
+                // Shorter fallback for devices without a Thai text-to-speech voice.
+                audio.playbackRate = 1.45;
                 let done = false;
+                let watchdog;
                 const finish = () => {
                   if(done) return;
                   done = true;
+                  clearTimeout(watchdog);
                   audio.onended = null;
                   audio.onerror = null;
+                  if(baacCurrentAudio === audio) baacCurrentAudio = null;
                   resolve();
                 };
                 audio.onended = finish;
                 audio.onerror = finish;
                 const p = audio.play();
                 if(p && typeof p.catch === 'function') p.catch(finish);
-                setTimeout(finish, 8000);
+                watchdog = setTimeout(finish, 5500);
               }catch(e){ resolve(); }
             });
           }
 
-          async function playBaacVoiceSequence(keys){
+          async function playBaacVoiceSequence(keys, sequenceId){
             if(!keys || !keys.length) return;
             for(const key of keys){
-              await playOneBaacVoice(key);
-              await new Promise(r => setTimeout(r, 20));
+              if(sequenceId !== baacVoiceSequenceId) return;
+              await playOneBaacVoice(key, sequenceId);
             }
           }
 
           function speakCheckoutResult(result){
             if(!result) return;
+            stopBaacCheckoutVoice();
+            const sequenceId = baacVoiceSequenceId;
             const change = Math.max(0, Number(result.change || 0));
-            if(result.paymentMethod === 'เงินสด' && change > 0){
-              const whole = Math.floor(change);
-              const satang = Math.round((change - whole) * 100);
-              const seq = ['change'].concat(baacNumberVoiceParts(whole), ['baht']);
-              if(satang === 50) seq.push('satang50');
-              seq.push('thanks');
-              playBaacVoiceSequence(seq);
-            }else{
-              playBaacVoiceSequence(['thanks']);
+            const hasChange = result.paymentMethod === 'เงินสด' && change > 0;
+            const whole = Math.floor(change);
+            const satang = Math.round((change - whole) * 100);
+            const message = hasChange
+              ? 'เงินทอน ' + whole + ' บาท' +
+                (satang > 0 ? ' ' + satang + ' สตางค์' : '') +
+                ' ขอบคุณที่ใช้บริการค่ะ'
+              : 'ขอบคุณที่ใช้บริการค่ะ';
+
+            const fallback = () => {
+              if(sequenceId !== baacVoiceSequenceId) return;
+              if(hasChange){
+                const seq = ['change'].concat(baacNumberVoiceParts(whole), ['baht']);
+                if(satang === 50) seq.push('satang50');
+                seq.push('thanks');
+                playBaacVoiceSequence(seq, sequenceId);
+              }else{
+                playBaacVoiceSequence(['thanks'], sequenceId);
+              }
+            };
+
+            // Speak the entire Thai sentence instead of stitching together
+            // many slow recordings. Retain the original recordings as fallback.
+            if(!('speechSynthesis' in window) || !('SpeechSynthesisUtterance' in window)){
+              fallback();
+              return;
+            }
+            try{
+              const synth = window.speechSynthesis;
+              const thaiVoice = synth.getVoices().find(v => /^th(?:-|$)/i.test(v.lang));
+              if(!thaiVoice){ fallback(); return; }
+              const utterance = new SpeechSynthesisUtterance(message);
+              utterance.lang = 'th-TH';
+              utterance.voice = thaiVoice;
+              utterance.rate = 1.25;
+              utterance.pitch = 1;
+              utterance.volume = 1;
+              let started = false;
+              let completed = false;
+              const watchdog = setTimeout(() => {
+                if(started || completed || sequenceId !== baacVoiceSequenceId) return;
+                completed = true;
+                synth.cancel();
+                fallback();
+              }, 1800);
+              utterance.onstart = () => { started = true; clearTimeout(watchdog); };
+              utterance.onend = () => { completed = true; clearTimeout(watchdog); };
+              utterance.onerror = () => {
+                if(completed) return;
+                completed = true;
+                clearTimeout(watchdog);
+                fallback();
+              };
+              synth.speak(utterance);
+            }catch(e){
+              fallback();
             }
           }
 
