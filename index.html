@@ -4138,65 +4138,19 @@ body.payment-page-open{
 
           function speakCheckoutResult(result){
             if(!result) return;
+            // One playback engine only: recorded Thai clips. Never run TTS in parallel.
             stopBaacCheckoutVoice();
             const sequenceId = baacVoiceSequenceId;
             const change = Math.max(0, Number(result.change || 0));
-            const hasChange = result.paymentMethod === 'เงินสด' && change > 0;
-            const whole = Math.floor(change);
-            const satang = Math.round((change - whole) * 100);
-            const message = hasChange
-              ? 'เงินทอน ' + whole + ' บาท' +
-                (satang > 0 ? ' ' + satang + ' สตางค์' : '') +
-                ' ขอบคุณที่ใช้บริการค่ะ'
-              : 'ขอบคุณที่ใช้บริการค่ะ';
-
-            const fallback = () => {
-              if(sequenceId !== baacVoiceSequenceId) return;
-              if(hasChange){
-                const seq = ['change'].concat(baacNumberVoiceParts(whole), ['baht']);
-                if(satang === 50) seq.push('satang50');
-                seq.push('thanks');
-                playBaacVoiceSequence(seq, sequenceId);
-              }else{
-                playBaacVoiceSequence(['thanks'], sequenceId);
-              }
-            };
-
-            // Speak the entire Thai sentence instead of stitching together
-            // many slow recordings. Retain the original recordings as fallback.
-            if(!('speechSynthesis' in window) || !('SpeechSynthesisUtterance' in window)){
-              fallback();
-              return;
-            }
-            try{
-              const synth = window.speechSynthesis;
-              const thaiVoice = synth.getVoices().find(v => /^th(?:-|$)/i.test(v.lang));
-              if(!thaiVoice){ fallback(); return; }
-              const utterance = new SpeechSynthesisUtterance(message);
-              utterance.lang = 'th-TH';
-              utterance.voice = thaiVoice;
-              utterance.rate = 1.25;
-              utterance.pitch = 1;
-              utterance.volume = 1;
-              let started = false;
-              let completed = false;
-              const watchdog = setTimeout(() => {
-                if(started || completed || sequenceId !== baacVoiceSequenceId) return;
-                completed = true;
-                synth.cancel();
-                fallback();
-              }, 1800);
-              utterance.onstart = () => { started = true; clearTimeout(watchdog); };
-              utterance.onend = () => { completed = true; clearTimeout(watchdog); };
-              utterance.onerror = () => {
-                if(completed) return;
-                completed = true;
-                clearTimeout(watchdog);
-                fallback();
-              };
-              synth.speak(utterance);
-            }catch(e){
-              fallback();
+            if(result.paymentMethod === 'เงินสด' && change > 0){
+              const whole = Math.floor(change);
+              const satang = Math.round((change - whole) * 100);
+              const seq = ['change'].concat(baacNumberVoiceParts(whole), ['baht']);
+              if(satang === 50) seq.push('satang50');
+              seq.push('thanks');
+              playBaacVoiceSequence(seq, sequenceId);
+            }else{
+              playBaacVoiceSequence(['thanks'], sequenceId);
             }
           }
 
