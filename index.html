@@ -4107,7 +4107,7 @@ body.payment-page-open{
                 audio.preload = 'auto';
                 audio.volume = 1;
                 // Shorter fallback for devices without a Thai text-to-speech voice.
-                audio.playbackRate = 1.45;
+                audio.playbackRate = 1.25;
                 let done = false;
                 let watchdog;
                 const finish = () => {
@@ -4116,6 +4116,7 @@ body.payment-page-open{
                   clearTimeout(watchdog);
                   audio.onended = null;
                   audio.onerror = null;
+                  try{ audio.pause(); }catch(e){}
                   if(baacCurrentAudio === audio) baacCurrentAudio = null;
                   resolve();
                 };
