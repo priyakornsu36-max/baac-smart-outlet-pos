@@ -4661,20 +4661,96 @@ body.payment-page-open{
             return sheet;
           }
 
+          // iPad Safari does not reliably preview/download data: URLs from anchor.download.
+          // Keep the original report layout, but show the rendered JPEG inside the POS.
+          function showHistoryImagePreview(blob, fileName){
+            const previous = document.getElementById('baacHistoryImagePreview');
+            if(previous) previous.remove();
+            const objectUrl = URL.createObjectURL(blob);
+            const overlay = document.createElement('div');
+            overlay.id = 'baacHistoryImagePreview';
+            overlay.setAttribute('role','dialog');
+            overlay.setAttribute('aria-modal','true');
+            overlay.setAttribute('aria-label','ตัวอย่างรายงานยอดขาย');
+            overlay.style.cssText = 'position:fixed;inset:0;z-index:2147483647;background:rgba(15,28,23,.94);display:flex;flex-direction:column;align-items:center;padding:14px;box-sizing:border-box;color:#fff;font-family:inherit;';
+            const bar = document.createElement('div');
+            bar.style.cssText = 'width:100%;max-width:900px;display:flex;align-items:center;justify-content:space-between;gap:10px;margin-bottom:12px;';
+            const heading = document.createElement('strong');
+            heading.textContent = 'ตัวอย่างรายงานยอดขาย';
+            heading.style.cssText = 'font-size:19px;';
+            const closeBtn = document.createElement('button');
+            closeBtn.type='button';
+            closeBtn.textContent='✕ ปิด';
+            closeBtn.style.cssText='border:0;border-radius:10px;background:#fff;color:#19432c;padding:11px 17px;font-size:16px;font-weight:700;';
+            bar.append(heading,closeBtn);
+            const scroll = document.createElement('div');
+            scroll.style.cssText = 'flex:1;min-height:0;width:100%;overflow:auto;-webkit-overflow-scrolling:touch;text-align:center;';
+            const img = document.createElement('img');
+            img.src=objectUrl;
+            img.alt='รายงานสรุปยอดขาย '+historySelectedDate;
+            img.style.cssText='display:block;width:100%;max-width:794px;height:auto;margin:0 auto;background:#fff;object-fit:contain;';
+            scroll.appendChild(img);
+            const footer = document.createElement('div');
+            footer.style.cssText='width:100%;max-width:900px;display:flex;flex-wrap:wrap;align-items:center;justify-content:center;gap:10px;padding-top:12px;';
+            const hint=document.createElement('span');
+            hint.textContent='สามารถกดค้างที่ภาพเพื่อบันทึกรูปได้';
+            hint.style.cssText='font-size:13px;opacity:.9;';
+            const saveBtn=document.createElement('button');
+            saveBtn.type='button';
+            saveBtn.textContent='บันทึก / แชร์รูป';
+            saveBtn.style.cssText='border:0;border-radius:12px;background:#08783f;color:#fff;padding:13px 20px;font-size:17px;font-weight:700;';
+            footer.append(saveBtn,hint);
+            overlay.append(bar,scroll,footer);
+            function closePreview(){
+              overlay.remove();
+              URL.revokeObjectURL(objectUrl);
+            }
+            closeBtn.addEventListener('click',closePreview);
+            saveBtn.addEventListener('click',async function(){
+              try{
+                if(navigator.share && typeof File !== 'undefined'){
+                  const file=new File([blob],fileName,{type:'image/jpeg'});
+                  if(!navigator.canShare || navigator.canShare({files:[file]})){
+                    await navigator.share({files:[file],title:'รายงานยอดขาย'});
+                    return;
+                  }
+                }
+              }catch(err){
+                if(err && err.name==='AbortError') return;
+              }
+              const link=document.createElement('a');
+              link.href=objectUrl;
+              link.download=fileName;
+              document.body.appendChild(link);
+              link.click();
+              link.remove();
+            });
+            document.body.appendChild(overlay);
+          }
+
           function exportHistoryImage(){
             getHistoryExportData(function(rows){
               const sheet = buildHistoryExportSheet(rows);
-
+              if(typeof html2canvas !== 'function'){
+                sheet.remove();
+                showAppAlert('ไม่สามารถสร้างรูปภาพได้ กรุณาเชื่อมต่ออินเทอร์เน็ตแล้วลองใหม่','ส่งออกรายการขาย','error');
+                return;
+              }
               html2canvas(sheet,{
                 scale:2,
                 backgroundColor:'#ffffff',
                 useCORS:true
               }).then(function(canvas){
-                const link = document.createElement('a');
-                link.download = 'ยอดขาย_' + historySelectedDate.replace(/\//g,'-') + '.jpg';
-                link.href = canvas.toDataURL('image/jpeg', 0.95);
-                link.click();
                 sheet.remove();
+                if(!canvas.width || !canvas.height) throw new Error('ไม่สามารถสร้างภาพรายงานได้');
+                const fileName='ยอดขาย_'+historySelectedDate.replace(/\//g,'-')+'.jpg';
+                canvas.toBlob(function(blob){
+                  if(!blob){
+                    showAppAlert('ไม่สามารถสร้างไฟล์ภาพรายงานได้','ส่งออกรายการขาย','error');
+                    return;
+                  }
+                  showHistoryImagePreview(blob,fileName);
+                },'image/jpeg',0.95);
               }).catch(function(err){
                 sheet.remove();
                 showError(err);
